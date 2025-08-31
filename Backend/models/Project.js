@@ -11,6 +11,9 @@ const projectSchema = new mongoose.Schema(
       enum: ["planned", "in-progress", "completed"],
       default: "planned",
     },
+    deadline: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

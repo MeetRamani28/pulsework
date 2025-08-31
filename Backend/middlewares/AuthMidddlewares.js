@@ -5,6 +5,7 @@ const authMiddleware = (req, res, next) => {
   if (!token) {
     return res.status(401).json({ message: "No token, authorization denied" });
   }
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
@@ -12,17 +13,6 @@ const authMiddleware = (req, res, next) => {
   } catch (err) {
     res.status(401).json({ message: "Token is not valid" });
   }
-
-  res.status(200).json({
-    message: "Login successful",
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      roles: user.roles,
-    },
-    token,
-  });
 };
 
 const roleMiddleware = (roles) => {
@@ -34,4 +24,15 @@ const roleMiddleware = (roles) => {
   };
 };
 
-module.exports = { authMiddleware, roleMiddleware };
+const errorHandler = (err, req, res, next) => {
+  console.error("🔥 Error:", err.stack);
+
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+    stack: process.env.NODE_ENV === "production" ? null : err.stack,
+  });
+};
+
+module.exports = { authMiddleware, roleMiddleware, errorHandler };

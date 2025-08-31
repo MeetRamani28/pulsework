@@ -3,19 +3,24 @@ const { hashPass } = require("../utils/EncryptPass");
 const { generateToken } = require("../utils/GenrateToken");
 const { comparePass } = require("../utils/DecryptPass");
 
-const registerUser = async (req, res) => {
+// ✅ Register User
+const registerUser = async (req, res, next) => {
   try {
     const { name, email, password, roles } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: "All Fields Are Required" });
+      const error = new Error("All Fields Are Required");
+      error.statusCode = 400;
+      return next(error);
     }
+
     const existingUser = await usermodel.findOne({ email });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "Email Already Exists, Please Logged In" });
+      const error = new Error("Email Already Exists, Please Login");
+      error.statusCode = 400;
+      return next(error);
     }
+
     const hashedPassword = await hashPass(password);
     const newUser = await usermodel.create({
       name,
@@ -34,26 +39,33 @@ const registerUser = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    next(error); // 👈 centralized error handler
   }
 };
 
-const loginUser = async (req, res) => {
+// ✅ Login User
+const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "All Fields Are Required" });
+      const error = new Error("All Fields Are Required");
+      error.statusCode = 400;
+      return next(error);
     }
 
     const user = await usermodel.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Invalid Credentials" });
+      const error = new Error("Invalid Credentials");
+      error.statusCode = 400;
+      return next(error);
     }
 
     const isMatch = await comparePass(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid Credentials" });
+      const error = new Error("Invalid Credentials");
+      error.statusCode = 400;
+      return next(error);
     }
 
     const token = generateToken({ id: user._id, roles: user.roles });
@@ -69,8 +81,38 @@ const loginUser = async (req, res) => {
       token,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    next(error);
   }
 };
 
-module.exports = { registerUser, loginUser };
+// ✅ Get Logged In User
+const getCurrentUser = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const user = await usermodel.findById(userId).select("-password");
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+    res.status(200).json({ user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const logoutUser = async (req, res, next) => {
+  try {
+    // If using cookies
+    res.clearCookie("token");
+
+    // If using localStorage (frontend), just send a success response
+    res.status(200).json({
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { registerUser, loginUser, getCurrentUser, logoutUser };

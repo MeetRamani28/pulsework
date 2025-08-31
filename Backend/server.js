@@ -6,9 +6,15 @@ const session = require("express-session");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
+require("./config/database-connection");
+const { errorHandler } = require("./middlewares/AuthMidddlewares");
 
-const db = require("./config/database-connection");
 const authRoutes = require("./routes/AuthRoutes");
+const userRoutes = require("./routes/UserRoutes");
+const projectRoutes = require("./routes/ProjectRoutes");
+const taskRoutes = require("./routes/TaskRoutes");
+const timeLogRoutes = require("./routes/TimeLogRoutes");
+const commentRoutes = require("./routes/CommentRoutes");
 
 app.use(
   cors({
@@ -24,24 +30,36 @@ app.use(
   session({
     secret: process.env.EXPRESS_SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
-      httpOnly: true,
-      secure: false,
-      maxAge: 1000 * 60 * 60 * 24,
+      httpOnly: true, // prevent JS access to cookies
+      secure: process.env.NODE_ENV === "production", // only https in production
+      sameSite: "lax", // balance between security & usability
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
 );
 
-app.use("/auth", authRoutes)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
+app.use("/projects", projectRoutes);
+app.use("/tasks", taskRoutes);
+app.use("/timelogs", timeLogRoutes);
+app.use("/comments", commentRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Welcome to the WorkChrono✨!" });
 });
 
 app.use((req, res, next) => {
-  res.status(404).json({ message: "Route not found🙃" });
+  const error = new Error("Route not found 🙃");
+  error.statusCode = 404;
+  next(error);
 });
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
