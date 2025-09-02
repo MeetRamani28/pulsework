@@ -46,15 +46,18 @@ const registerUser = async (req, res, next) => {
 // ✅ Login User
 const loginUser = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, password } = req.body;
 
-    if (!email || !password) {
+    if ((!email && !username) || !password) {
       const error = new Error("All Fields Are Required");
       error.statusCode = 400;
       return next(error);
     }
 
-    const user = await usermodel.findOne({ email });
+     const user = await usermodel.findOne(
+      email ? { email } : { name: username }
+    );
+    
     if (!user) {
       const error = new Error("Invalid Credentials");
       error.statusCode = 400;

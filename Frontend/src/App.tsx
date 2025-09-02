@@ -1,12 +1,11 @@
 import React from "react";
+import Routing from "./utils/Routing";
 
 const App: React.FC = () => {
   return (
-    <>
-      <h1 className="w-full h-screen flex items-center justify-center text-4xl">
-        Welcome to pulsework!!!
-      </h1>
-    </>
+    <div className="font-[gilroy] flex flex-col justify-between overflow-hidden select-none w-full max-h-screen h-screen">
+      <Routing />
+    </div>
   );
 };
 
