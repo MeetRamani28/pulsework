@@ -6,6 +6,8 @@ const {
   getCommentsForProject,
   updateComment,
   deleteComment,
+  getAllComments,
+  markCommentsAsViewed,
 } = require("../controllers/CommentController");
 const { authMiddleware } = require("../middlewares/AuthMidddlewares");
 
@@ -15,6 +17,13 @@ const { authMiddleware } = require("../middlewares/AuthMidddlewares");
  * @access  Private (Logged-in users)
  */
 router.post("/task/:taskId", authMiddleware, addComment);
+
+/**
+ * @route   GET /comments/all
+ * @desc    Get all comments (Admin/Manager only)
+ * @access  Private
+ */
+router.get("/all", authMiddleware, getAllComments);
 
 /**
  * @route   POST /comments/project/:projectId
@@ -50,5 +59,12 @@ router.put("/update/:id", authMiddleware, updateComment);
  * @access  Private
  */
 router.delete("/delete/:id", authMiddleware, deleteComment);
+
+/**
+ * @route   PUT /comments/mark-viewed
+ * @desc    Mark all comments as viewed
+ * @access  Private
+ */
+router.put("/mark-viewed", authMiddleware, markCommentsAsViewed);
 
 module.exports = router;

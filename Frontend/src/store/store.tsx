@@ -1,9 +1,19 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "../Reducers/AuthReducers.tsx";
+import projectReducer from "../Reducers/ProjectReducers.tsx";
+import taskReducer from "../Reducers/TaskReducers.tsx";
+import TimeLogReducer from "../Reducers/TimeLogsReducers.tsx";
+import userReducer from "../Reducers/UserReducers.tsx";
+import commentReducer from "../Reducers/CommentReducers.tsx";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    tasks: taskReducer,
+    projects: projectReducer,
+    workLogs: TimeLogReducer,
+    comments: commentReducer,
+    users: userReducer,
   },
 });
 

@@ -100,13 +100,13 @@ export const logoutUser = createAsyncThunk<
     const res = await axios.post(
       `${API_URL}/auth/logout`,
       {},
-      { withCredentials: true }
+      { withCredentials: true } // important to send cookies
     );
     return res.data;
   } catch (error: unknown) {
     const err = error as AxiosError<{ message: string }>;
     return thunkAPI.rejectWithValue(
-      err.response?.data?.message ?? "Logout failed"
+      err.response?.data?.message || "Logout failed"
     );
   }
 });
@@ -172,11 +172,21 @@ const authSlice = createSlice({
       });
 
     // ✅ Logout
-    builder.addCase(logoutUser.fulfilled, (state) => {
-      state.user = null;
-      state.token = null;
-      Cookies.remove("token");
-    });
+    builder
+      .addCase(logoutUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.loading = false;
+        state.user = null;
+        state.token = null;
+        Cookies.remove("token"); // remove frontend cookie
+      })
+      .addCase(logoutUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Logout failed";
+      });
   },
 });
 

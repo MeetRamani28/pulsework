@@ -45,6 +45,28 @@ const createTask = async (req, res, next) => {
   }
 };
 
+// ✅ Get all tasks (admin only)
+const getAllTasks = async (req, res, next) => {
+  try {
+    // Only admin or manager can view all tasks
+    if (!["admin", "manager"].includes(req.user.roles)) {
+      const error = new Error("Not authorized to view all tasks");
+      error.statusCode = 403;
+      return next(error);
+    }
+
+    const tasks = await Task.find()
+      .populate("project", "name") // show project name
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email")
+      .sort({ createdAt: -1 }); // latest first
+
+    res.status(200).json(tasks);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ✅ Get all tasks for a project
 const getTasksByProject = async (req, res, next) => {
   try {
@@ -142,6 +164,7 @@ const deleteTask = async (req, res, next) => {
 
 module.exports = {
   createTask,
+  getAllTasks,
   getTasksByProject,
   getTaskById,
   updateTask,

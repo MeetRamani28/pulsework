@@ -37,10 +37,32 @@ const addComment = async (req, res, next) => {
       task: taskId || null,
       project: projectId || null,
       user: req.user.id,
+      viewed: false, // <-- mark as unseen initially
     });
 
     await comment.save();
     res.status(201).json(comment);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ✅ Get all comments
+const getAllComments = async (req, res, next) => {
+  try {
+    let filter = {};
+
+    if (!["admin", "manager"].includes(req.user.roles)) {
+      filter = { user: req.user.id };
+    }
+
+    const comments = await Comment.find(filter)
+      .populate("user", "name email")
+      .populate("task", "title")
+      .populate("project", "name")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(comments);
   } catch (error) {
     next(error);
   }
@@ -129,10 +151,22 @@ const deleteComment = async (req, res, next) => {
   }
 };
 
+// ✅ Mark all comments as viewed
+const markCommentsAsViewed = async (req, res, next) => {
+  try {
+    await Comment.updateMany({ viewed: false }, { viewed: true });
+    res.status(200).json({ message: "All comments marked as viewed" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   addComment,
+  getAllComments,
   getCommentsForTask,
   getCommentsForProject,
   updateComment,
   deleteComment,
+  markCommentsAsViewed, // <-- new endpoint
 };

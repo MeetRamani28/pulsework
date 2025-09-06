@@ -54,10 +54,10 @@ const loginUser = async (req, res, next) => {
       return next(error);
     }
 
-     const user = await usermodel.findOne(
+    const user = await usermodel.findOne(
       email ? { email } : { name: username }
     );
-    
+
     if (!user) {
       const error = new Error("Invalid Credentials");
       error.statusCode = 400;
@@ -106,13 +106,19 @@ const getCurrentUser = async (req, res, next) => {
 
 const logoutUser = async (req, res, next) => {
   try {
-    // If using cookies
-    res.clearCookie("token");
-
-    // If using localStorage (frontend), just send a success response
-    res.status(200).json({
-      message: "Logged out successfully",
+    // Clear the token cookie set by login
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
     });
+
+    // Optionally, destroy session if you are using express-session
+    req.session.destroy((err) => {
+      if (err) console.error("Session destruction error:", err);
+    });
+
+    res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     next(error);
   }

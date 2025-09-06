@@ -12,3 +12,37 @@ input[type="password"]::-ms-clear,
 input[type="password"]::-webkit-textfield-decoration-container {
   display: none !important;
 }
+
+/* Custom Scrollbar
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #a3a3a3;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+} */
+
+/* Hide scrollbar */
+/* hide scrollbar but keep scroll functionality */
+.custom-scrollbar {
+  -ms-overflow-style: none !important;  /* IE & Edge */
+  scrollbar-width: none !important;     /* Firefox */
+  -webkit-overflow-scrolling: touch;     /* smooth scrolling on iOS */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent !important;
+}

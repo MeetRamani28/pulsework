@@ -66,33 +66,18 @@ const AuthPage: React.FC = () => {
   // ✅ Success Toast
   useEffect(() => {
     if (user) {
-      toast.custom((t) => (
-        <AnimatePresence>
-          {t.visible && (
-            <motion.div
-              initial={{ opacity: 0, y: 30, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg border border-green-400"
-            >
-              ✅ Welcome back, {user.name}!
-            </motion.div>
-          )}
-        </AnimatePresence>
-      ));
+      toast(
+        <div className="bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg border border-green-400">
+          Welcome back, {user.name}!
+        </div>,
+        { duration: 3000 }
+      );
 
-      // clear fields
       setCredentials({ identifier: "", password: "" });
 
-      // redirect based on role
-      if (user.roles?.includes("admin")) {
-        navigate("/admin/Dashboard");
-      } else if (user.roles?.includes("manager")) {
-        navigate("/manager/Dashboard");
-      } else {
-        navigate("/employee/Dashboard");
-      }
+      if (user.roles?.includes("admin")) navigate("/admin");
+      else if (user.roles?.includes("manager")) navigate("/manager");
+      else navigate("/employee");
     }
   }, [user, navigate]);
 

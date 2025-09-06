@@ -6,6 +6,7 @@ const {
   getTaskById,
   updateTask,
   deleteTask,
+  getAllTasks,
 } = require("../controllers/TaskController");
 const { authMiddleware } = require("../middlewares/AuthMidddlewares");
 
@@ -15,6 +16,13 @@ const { authMiddleware } = require("../middlewares/AuthMidddlewares");
  * @access  Private (Any logged-in user)
  */
 router.post("/create", authMiddleware, createTask);
+
+/**
+ * @route   GET /tasks/all
+ * @desc    Get all tasks (Admin/Manager only)
+ * @access  Private
+ */
+router.get("/all", authMiddleware, getAllTasks);
 
 /**
  * @route   GET /tasks/project/:projectId

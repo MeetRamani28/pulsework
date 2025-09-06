@@ -1,16 +1,12 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Outlet } from "react-router-dom";
 import Sidebar from "../atoms/Sidebar";
 import Header from "../atoms/Header";
 import type { RootState, AppDispatch } from "../../store/store";
 import { getCurrentUser } from "../../Reducers/AuthReducers";
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
-
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+const DashboardLayout: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { user, loading, token } = useSelector(
@@ -52,7 +48,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 custom-scrollbar overflow-auto p-6">
+          <Outlet /> {/* ✅ Nested pages (Dashboard, Project, Tasks, etc.) render here */}
+        </main>
       </div>
     </div>
   );
