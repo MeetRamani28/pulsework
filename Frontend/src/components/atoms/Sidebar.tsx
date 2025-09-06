@@ -24,8 +24,13 @@ const menuItems: MenuItem[] = [
   { name: "Project", path: "project", icon: ProjectIcon },
   { name: "Tasks", path: "tasks", icon: TasksIcon },
   { name: "Users", path: "user", icon: ProfileIcon, roles: ["admin"] }, // only for admin
-  { name: "Work Logs", path: "work-logs", icon: Calendar1 },
-  { name: "Comments", path: "comments", icon: CommentIcon },
+  {
+    name: "Work Logs",
+    path: "work-logs",
+    icon: Calendar1,
+    roles: ["admin", "manager"],
+  },
+  { name: "Comments", path: "comments", icon: CommentIcon,roles: ["admin"] },
   { name: "Profile", path: "profile", icon: ProfileIcon }, // only for admin
 ];
 

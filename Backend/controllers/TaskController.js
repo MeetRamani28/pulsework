@@ -122,11 +122,26 @@ const updateTask = async (req, res, next) => {
       return next(error);
     }
 
-    const updatedTask = await Task.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    const wasCompleted = task.status === "completed";
 
-    res.status(200).json({ message: "Task updated successfully", updatedTask });
+    // Update the task
+    Object.assign(task, req.body);
+    await task.save();
+
+    // If task is newly completed, notify manager
+    if (!wasCompleted && task.status === "completed") {
+      const project = await Project.findById(task.project).populate("manager");
+      if (project?.manager) {
+        // Here you can implement a real notification system (WebSocket, DB, etc.)
+        console.log(
+          `Notify manager ${project.manager.name}: Task "${task.title}" completed`
+        );
+      }
+    }
+
+    res
+      .status(200)
+      .json({ message: "Task updated successfully", updatedTask: task });
   } catch (error) {
     next(error);
   }

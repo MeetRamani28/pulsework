@@ -18,6 +18,10 @@ import AdminWorkLogs from "../pages/Admin/AdminWorkLogs";
 import AdminProfile from "../pages/Admin/AdminProfile";
 import AdminComments from "../pages/Admin/AdminPComments";
 import AdminUsers from "../pages/Admin/AdminUsers";
+import ManagerProjects from "../pages/Manager/MangerProjects";
+import ManagerTasks from "../pages/Manager/ManagerTasks";
+import ManagerProfile from "../pages/Manager/ManagerProfile";
+import ManagerTimeLogs from "../pages/Manager/ManagerTimeLogs";
 
 const PrivateRoute: React.FC<{
   children: React.ReactNode;
@@ -90,6 +94,10 @@ const Routing: React.FC = () => {
         }
       >
         <Route index element={<ManagerDashboard />} />
+        <Route path="project" element={<ManagerProjects />} />
+        <Route path="tasks" element={<ManagerTasks />} />
+        <Route path="work-logs" element={<ManagerTimeLogs />} />
+        <Route path="profile" element={<ManagerProfile />} />
       </Route>
 
       {/* Employee Routes */}

@@ -11,7 +11,10 @@ const {
   deleteLog,
   getAllLogs,
 } = require("../controllers/TimeLogController");
-const { authMiddleware } = require("../middlewares/AuthMidddlewares");
+const {
+  authMiddleware,
+  roleMiddleware,
+} = require("../middlewares/AuthMidddlewares");
 
 /**
  * @route   POST /timelogs/start/:taskId
@@ -50,10 +53,15 @@ router.get("/me", authMiddleware, getMyLogs);
 
 /**
  * @route   GET /timelogs/getAllLogs
- * @desc    Get current user's logs
- * @access  Private (Admin)
+ * @desc    Get current user's logs (Admin/Manager only)
+ * @access  Private
  */
-router.get("/getAllLogs", authMiddleware, getAllLogs);
+router.get(
+  "/getAllLogs",
+  authMiddleware,
+  roleMiddleware(["admin", "manager"]),
+  getAllLogs
+);
 
 /**
  * @route   GET /timelogs/task/:taskId

@@ -34,7 +34,8 @@ const startLog = async (req, res, next) => {
       if (lastSession && lastSession.startedAt) {
         lastSession.endedAt = new Date();
         lastSession.duration =
-          (lastSession.endedAt.getTime() - lastSession.startedAt.getTime()) / 1000;
+          (lastSession.endedAt.getTime() - lastSession.startedAt.getTime()) /
+          1000;
         log.isRunning = false;
         log.status = "paused";
         await log.save();
@@ -129,7 +130,8 @@ const resumeLog = async (req, res, next) => {
       if (lastSession && lastSession.startedAt) {
         lastSession.endedAt = new Date();
         lastSession.duration =
-          (lastSession.endedAt.getTime() - lastSession.startedAt.getTime()) / 1000;
+          (lastSession.endedAt.getTime() - lastSession.startedAt.getTime()) /
+          1000;
         rlog.isRunning = false;
         rlog.status = "paused";
         await rlog.save();
@@ -265,7 +267,10 @@ const deleteLog = async (req, res, next) => {
 // Get all logs (Admin only)
 const getAllLogs = async (req, res, next) => {
   try {
-    if (!req.user || req.user.roles !== "admin")
+    if (
+      !req.user ||
+      (req.user.roles !== "admin" && req.user.roles !== "manager")
+    )
       return res.status(403).json({ message: "Not authorized" });
 
     const logs = await TaskLog.find()

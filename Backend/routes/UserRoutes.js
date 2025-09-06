@@ -35,10 +35,15 @@ router.put(
 
 /**
  * @route   GET /users/all
- * @desc    Get all users (Admin only)
- * @access  Private (Admin)
+ * @desc    Get all users (Admin/Manager)
+ * @access  Private
  */
-router.get("/all", authMiddleware, roleMiddleware(["admin"]), getAllUsers);
+router.get(
+  "/all",
+  authMiddleware,
+  roleMiddleware(["admin", "manager"]),
+  getAllUsers
+);
 
 /**
  * @route   GET /users/:id

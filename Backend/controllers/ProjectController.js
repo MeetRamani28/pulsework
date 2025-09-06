@@ -77,7 +77,7 @@ const updateProject = async (req, res, next) => {
   try {
     const { name, description, manager, members, status, deadline } = req.body;
 
-    let project = await Project.findById(req.params.id);
+    let project = await Project.findById(req.params.id).populate("manager");
     if (!project) {
       const error = new Error("Project not found");
       error.statusCode = 404;
@@ -86,7 +86,7 @@ const updateProject = async (req, res, next) => {
 
     // Only manager or admin can update
     if (
-      project.manager.toString() !== req.user.id &&
+      project.manager._id.toString() !== req.user.id &&
       req.user.roles !== "admin"
     ) {
       const error = new Error("Not authorized");
@@ -94,6 +94,9 @@ const updateProject = async (req, res, next) => {
       return next(error);
     }
 
+    const wasCompleted = project.status === "completed";
+
+    // Update fields
     project.name = name || project.name;
     project.description = description || project.description;
     project.manager = manager || project.manager;
@@ -102,6 +105,14 @@ const updateProject = async (req, res, next) => {
     project.deadline = deadline || project.deadline;
 
     await project.save();
+
+    // Notify manager if newly completed
+    if (!wasCompleted && project.status === "completed" && project.manager) {
+      console.log(
+        `Notify manager ${project.manager.name}: Project "${project.name}" completed`
+      );
+      // TODO: Replace console.log with real notification system
+    }
 
     res.status(200).json({ message: "Project updated", project });
   } catch (error) {

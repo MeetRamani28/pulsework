@@ -4,11 +4,10 @@ import { useSelector, useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import type { RootState, AppDispatch } from "../../store/store";
 import { useNavigate } from "react-router-dom";
-import {
-  getAllComments,
-  markAllCommentsAsViewed,
-} from "../../Reducers/CommentReducers";
 import { logoutUser } from "../../Reducers/AuthReducers";
+import { getCurrentUser } from "../../Reducers/UserReducers";
+import { clearLastCompletedProject } from "../../Reducers/ProjectReducers";
+import { clearLastCompletedTask } from "../../Reducers/TaskReducers";
 
 interface SearchItem {
   id: string;
@@ -20,49 +19,112 @@ const Header: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
-  // Use the users slice for currentUser to get profilePicture
-  const { currentUser, users } = useSelector((state: RootState) => state.users);
+  const { currentUser } = useSelector((state: RootState) => state.users);
+  const { lastCompletedTask } = useSelector((state: RootState) => state.tasks);
+  const { lastCompletedProject } = useSelector(
+    (state: RootState) => state.projects
+  );
   const { tasks } = useSelector((state: RootState) => state.tasks);
   const { projects } = useSelector((state: RootState) => state.projects);
-  const { comments } = useSelector((state: RootState) => state.comments);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [unseenCount, setUnseenCount] = useState(0);
+  const [managerNotifications, setManagerNotifications] = useState<
+    SearchItem[]
+  >([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  // Load latest comments
+  // Load current user
   useEffect(() => {
-    dispatch(getAllComments());
-  }, [dispatch]);
+    if (!currentUser) dispatch(getCurrentUser());
+  }, [dispatch, currentUser]);
 
-  // Track unseen comments
+  // Track newly completed tasks/projects for manager
   useEffect(() => {
-    if (comments && comments.length > 0) {
-      const newComments = comments.filter((c) => !c.viewed);
-      setUnseenCount(newComments.length);
-    } else {
-      setUnseenCount(0);
+    if (!currentUser || currentUser.roles?.toLowerCase() !== "manager") return;
+
+    const newNotifications: SearchItem[] = [];
+
+    if (lastCompletedTask) {
+      newNotifications.push({
+        id: lastCompletedTask._id,
+        type: "task",
+        name: lastCompletedTask.title,
+      });
+      dispatch(clearLastCompletedTask());
     }
-  }, [comments]);
+
+    if (lastCompletedProject) {
+      // Ensure the manager owns the project
+      const isManager =
+        typeof lastCompletedProject.manager === "string"
+          ? lastCompletedProject.manager === currentUser._id
+          : lastCompletedProject.manager?._id === currentUser._id;
+
+      if (isManager) {
+        newNotifications.push({
+          id: lastCompletedProject._id,
+          type: "project",
+          name: lastCompletedProject.name,
+        });
+        dispatch(clearLastCompletedProject());
+      }
+    }
+
+    if (newNotifications.length > 0) {
+      setManagerNotifications((prev) => [...prev, ...newNotifications]);
+    }
+  }, [lastCompletedTask, lastCompletedProject, currentUser, dispatch]);
 
   // Searchable items
   const allItems: SearchItem[] = useMemo(() => {
-    const taskItems: SearchItem[] = tasks.map((t) => ({
-      id: t._id,
-      type: "task",
-      name: t.title,
-    }));
-    const projectItems: SearchItem[] = projects.map((p) => ({
-      id: p._id,
-      type: "project",
-      name: p.name,
-    }));
-    const userItems: SearchItem[] = users.map((u) => ({
-      id: u._id,
-      type: "user",
-      name: u.name,
-    }));
+    if (!currentUser) return [];
+
+    const userItems: SearchItem[] = [
+      { id: currentUser._id, type: "user", name: currentUser.name },
+    ];
+
+    const userProjectIds = projects
+      .filter((p) => {
+        const isManager =
+          typeof p.manager === "string"
+            ? p.manager === currentUser._id
+            : p.manager?._id === currentUser._id;
+        const isMember = p.members?.some((m) =>
+          typeof m === "string"
+            ? m === currentUser._id
+            : m._id === currentUser._id
+        );
+        return isManager || isMember;
+      })
+      .map((p) => p._id);
+
+    const projectItems: SearchItem[] = projects
+      .filter((p) => userProjectIds.includes(p._id))
+      .map((p) => ({ id: p._id, type: "project", name: p.name }));
+
+    type AssignedUser = string | { _id: string; name?: string };
+    const taskItems: SearchItem[] = tasks
+      .filter((t) => {
+        const belongsToUserProject =
+          typeof t.project === "string"
+            ? userProjectIds.includes(t.project)
+            : t.project?._id && userProjectIds.includes(t.project._id);
+
+        const assignedArray: AssignedUser[] = Array.isArray(t.assignedTo)
+          ? t.assignedTo
+          : [];
+        const isAssigned = assignedArray.some((a) =>
+          typeof a === "string"
+            ? a === currentUser._id
+            : a._id === currentUser._id
+        );
+
+        return belongsToUserProject || isAssigned;
+      })
+      .map((t) => ({ id: t._id, type: "task", name: t.title }));
+
     return [...taskItems, ...projectItems, ...userItems];
-  }, [tasks, projects, users]);
+  }, [tasks, projects, currentUser]);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery) return [];
@@ -71,35 +133,40 @@ const Header: React.FC = () => {
     );
   }, [searchQuery, allItems]);
 
+  const role = currentUser?.roles?.toLowerCase() || "employee";
+
   const handleSelectItem = (item: SearchItem) => {
     setSearchQuery("");
     switch (item.type) {
       case "task":
-        navigate(`/admin/tasks`);
+        navigate(`/${role}/tasks`);
         break;
       case "project":
-        navigate(`/admin/project`);
+        navigate(`/${role}/project`);
         break;
       case "user":
-        navigate(`/admin/user`);
+        navigate(`/${role}/profile`);
         break;
     }
   };
 
-  const handleNotificationClick = async () => {
-    navigate("/admin/comments");
-    setUnseenCount(0);
-    try {
-      await dispatch(markAllCommentsAsViewed()).unwrap();
-    } catch (err) {
-      console.error("Failed to mark comments as viewed", err);
+  const handleNotificationClick = (item: SearchItem) => {
+    switch (item.type) {
+      case "task":
+        navigate(`/manager/tasks`);
+        break;
+      case "project":
+        navigate(`/manager/project`);
+        break;
     }
+    setManagerNotifications((prev) => prev.filter((n) => n.id !== item.id));
+    setShowNotifications(false);
   };
 
   const handleLogout = async () => {
     try {
-      await dispatch(logoutUser()).unwrap(); // backend clears cookie + session
-      navigate("/"); // redirect to login
+      await dispatch(logoutUser()).unwrap();
+      navigate("/");
     } catch (err) {
       console.error("Logout failed", err);
     }
@@ -156,19 +223,38 @@ const Header: React.FC = () => {
       {/* Right Section */}
       <div className="flex items-center space-x-6 mt-3 md:mt-0">
         {/* Notifications */}
-        <motion.button
-          className="relative"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleNotificationClick}
-        >
-          <Bell className="h-6 w-6 text-gray-600 hover:text-indigo-600" />
-          {unseenCount > 0 && (
+        <div className="relative">
+          <Bell
+            className="h-6 w-6 text-gray-600 hover:text-indigo-600 cursor-pointer"
+            onClick={() => setShowNotifications((prev) => !prev)}
+          />
+          {managerNotifications.length > 0 && (
             <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-              {unseenCount}
+              {managerNotifications.length}
             </span>
           )}
-        </motion.button>
+
+          <AnimatePresence>
+            {showNotifications && managerNotifications.length > 0 && (
+              <motion.ul
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute right-0 mt-2 w-60 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto z-50"
+              >
+                {managerNotifications.map((item) => (
+                  <li
+                    key={item.id}
+                    onClick={() => handleNotificationClick(item)}
+                    className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700"
+                  >
+                    {item.name} ({item.type})
+                  </li>
+                ))}
+              </motion.ul>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* User Info & Logout */}
         <motion.div className="flex items-center space-x-3">

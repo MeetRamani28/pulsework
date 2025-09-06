@@ -8,7 +8,10 @@ const {
   deleteTask,
   getAllTasks,
 } = require("../controllers/TaskController");
-const { authMiddleware } = require("../middlewares/AuthMidddlewares");
+const {
+  authMiddleware,
+  roleMiddleware,
+} = require("../middlewares/AuthMidddlewares");
 
 /**
  * @route   POST /tasks/create
@@ -22,7 +25,12 @@ router.post("/create", authMiddleware, createTask);
  * @desc    Get all tasks (Admin/Manager only)
  * @access  Private
  */
-router.get("/all", authMiddleware, getAllTasks);
+router.get(
+  "/all",
+  authMiddleware,
+  roleMiddleware(["admin", "manager"]),
+  getAllTasks
+);
 
 /**
  * @route   GET /tasks/project/:projectId

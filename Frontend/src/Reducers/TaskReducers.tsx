@@ -167,6 +167,7 @@ interface TaskState {
   loading: boolean;
   error: string | null;
   success: boolean;
+  lastCompletedTask?: Task;
 }
 
 const initialState: TaskState = {
@@ -175,6 +176,7 @@ const initialState: TaskState = {
   loading: false,
   error: null,
   success: false,
+  lastCompletedTask: undefined,
 };
 
 const taskSlice = createSlice({
@@ -186,6 +188,9 @@ const taskSlice = createSlice({
     },
     clearTaskSuccess: (state) => {
       state.success = false;
+    },
+    clearLastCompletedTask: (state) => {
+      state.lastCompletedTask = undefined;
     },
   },
   extraReducers: (builder) => {
@@ -254,11 +259,17 @@ const taskSlice = createSlice({
       })
       .addCase(updateTask.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentTask = action.payload;
+        const updated = action.payload;
+        state.currentTask = updated;
         state.tasks = state.tasks.map((t) =>
-          t._id === action.payload._id ? action.payload : t
+          t._id === updated._id ? updated : t
         );
         state.success = true;
+
+        // Manager notification: task newly completed
+        if (updated.status === "completed") {
+          state.lastCompletedTask = updated;
+        }
       })
       .addCase(updateTask.rejected, (state, action) => {
         state.loading = false;
@@ -285,5 +296,6 @@ const taskSlice = createSlice({
   },
 });
 
-export const { clearTaskError, clearTaskSuccess } = taskSlice.actions;
+export const { clearTaskError, clearTaskSuccess, clearLastCompletedTask } =
+  taskSlice.actions;
 export default taskSlice.reducer;

@@ -163,6 +163,7 @@ interface ProjectState {
   loading: boolean;
   error: string | null;
   success: boolean;
+  lastCompletedProject?: Project;
 }
 
 const initialState: ProjectState = {
@@ -172,6 +173,7 @@ const initialState: ProjectState = {
   loading: false,
   error: null,
   success: false,
+  lastCompletedProject: undefined,
 };
 
 const projectSlice = createSlice({
@@ -183,6 +185,9 @@ const projectSlice = createSlice({
     },
     clearProjectSuccess: (state) => {
       state.success = false;
+    },
+    clearLastCompletedProject: (state) => {
+      state.lastCompletedProject = undefined; // clear notification
     },
   },
   extraReducers: (builder) => {
@@ -252,14 +257,21 @@ const projectSlice = createSlice({
       })
       .addCase(updateProject.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentProject = action.payload;
+        const updated = action.payload;
+
+        state.currentProject = updated;
         state.projects = state.projects.map((p) =>
-          p._id === action.payload._id ? action.payload : p
+          p._id === updated._id ? updated : p
         );
         state.myProjects = state.myProjects.map((p) =>
-          p._id === action.payload._id ? action.payload : p
+          p._id === updated._id ? updated : p
         );
         state.success = true;
+
+        // Manager notification: project newly completed
+        if (updated.status === "completed") {
+          state.lastCompletedProject = updated;
+        }
       })
       .addCase(updateProject.rejected, (state, action) => {
         state.loading = false;
@@ -289,5 +301,9 @@ const projectSlice = createSlice({
   },
 });
 
-export const { clearProjectError, clearProjectSuccess } = projectSlice.actions;
+export const {
+  clearProjectError,
+  clearProjectSuccess,
+  clearLastCompletedProject,
+} = projectSlice.actions;
 export default projectSlice.reducer;
