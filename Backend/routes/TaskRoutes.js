@@ -22,13 +22,13 @@ router.post("/create", authMiddleware, createTask);
 
 /**
  * @route   GET /tasks/all
- * @desc    Get all tasks (Admin/Manager only)
+ * @desc    Get all tasks (Admin/Manager/Employee)
  * @access  Private
  */
 router.get(
   "/all",
   authMiddleware,
-  roleMiddleware(["admin", "manager"]),
+  roleMiddleware(["admin", "manager", "employee"]),
   getAllTasks
 );
 

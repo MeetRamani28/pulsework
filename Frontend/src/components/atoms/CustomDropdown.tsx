@@ -8,6 +8,7 @@ export interface DropdownProps {
   onSelectMulti?: (values: string[]) => void; // for multi select
   multi?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export const CustomDropdown: React.FC<DropdownProps> = ({
@@ -17,6 +18,7 @@ export const CustomDropdown: React.FC<DropdownProps> = ({
   onSelectMulti,
   multi = false,
   placeholder,
+  disabled = false,
 }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -37,9 +39,12 @@ export const CustomDropdown: React.FC<DropdownProps> = ({
     ? (selected as string[]).length > 0
       ? `${(selected as string[]).length} selected`
       : placeholder || "Select..."
-    : options.find((o) => o.value === selected)?.label || placeholder || "Select...";
+    : options.find((o) => o.value === selected)?.label ||
+      placeholder ||
+      "Select...";
 
   const handleSelect = (value: string) => {
+    if (disabled) return;
     if (multi && onSelectMulti) {
       let newSelected: string[] = Array.isArray(selected) ? [...selected] : [];
       if (newSelected.includes(value)) {
@@ -58,7 +63,7 @@ export const CustomDropdown: React.FC<DropdownProps> = ({
     <div className="relative w-full" ref={ref}>
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => !disabled && setOpen(!open)}
         className="w-full px-3 py-2 border rounded-lg flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         {selectedLabel}
@@ -72,7 +77,9 @@ export const CustomDropdown: React.FC<DropdownProps> = ({
               key={option.value}
               onClick={() => handleSelect(option.value)}
               className={`px-3 py-2 hover:bg-blue-100 cursor-pointer flex items-center ${
-                multi && Array.isArray(selected) && selected.includes(option.value)
+                multi &&
+                Array.isArray(selected) &&
+                selected.includes(option.value)
                   ? "bg-blue-50 font-medium"
                   : ""
               }`}
@@ -81,7 +88,9 @@ export const CustomDropdown: React.FC<DropdownProps> = ({
                 <input
                   type="checkbox"
                   readOnly
-                  checked={Array.isArray(selected) && selected.includes(option.value)}
+                  checked={
+                    Array.isArray(selected) && selected.includes(option.value)
+                  }
                   className="mr-2"
                 />
               )}

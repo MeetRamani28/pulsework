@@ -22,6 +22,11 @@ import ManagerProjects from "../pages/Manager/MangerProjects";
 import ManagerTasks from "../pages/Manager/ManagerTasks";
 import ManagerProfile from "../pages/Manager/ManagerProfile";
 import ManagerTimeLogs from "../pages/Manager/ManagerTimeLogs";
+import EmployeeTasks from "../pages/Employee/EmployeeTasks";
+import EmployeeProjects from "../pages/Employee/EmployeeProjects";
+import EmployeeLogs from "../pages/Employee/EmployeeLogs";
+import EmployeeProfile from "../pages/Employee/EmployeeProfile";
+import TimerPopupPage from "../pages/Employee/TimerPopupPage";
 
 const PrivateRoute: React.FC<{
   children: React.ReactNode;
@@ -110,7 +115,12 @@ const Routing: React.FC = () => {
         }
       >
         <Route index element={<EmployeeDashboard />} />
+        <Route path="tasks" element={<EmployeeTasks />} />
+        <Route path="project" element={<EmployeeProjects />} />
+        <Route path="work-logs" element={<EmployeeLogs />} />
+        <Route path="profile" element={<EmployeeProfile />} />
       </Route>
+      <Route path="/employee/timer-popup" element={<TimerPopupPage />} />
 
       {/* Unauthorized */}
       <Route path="/unauthorized" element={<div>🚫 Unauthorized Access</div>} />

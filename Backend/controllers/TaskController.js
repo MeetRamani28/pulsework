@@ -49,7 +49,7 @@ const createTask = async (req, res, next) => {
 const getAllTasks = async (req, res, next) => {
   try {
     // Only admin or manager can view all tasks
-    if (!["admin", "manager"].includes(req.user.roles)) {
+    if (!["admin", "manager", "employee"].includes(req.user.roles)) {
       const error = new Error("Not authorized to view all tasks");
       error.statusCode = 403;
       return next(error);

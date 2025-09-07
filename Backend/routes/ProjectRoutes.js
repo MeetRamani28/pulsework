@@ -30,12 +30,12 @@ router.get("/my", authMiddleware, getMyProjects);
 /**
  * @route   GET /projects/all
  * @desc    Get all projects (Admin/Manager only)
- * @access  Private (Admin, Manager)
+ * @access  Private (Admin, Manager, employee)
  */
 router.get(
   "/all",
   authMiddleware,
-  roleMiddleware(["admin", "manager"]),
+  roleMiddleware(["admin", "manager", "employee"]),
   getAllProjects
 );
 

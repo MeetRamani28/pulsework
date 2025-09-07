@@ -19,6 +19,15 @@ const createProject = async (req, res, next) => {
       deadline,
     });
 
+    if (members && members.length > 0) {
+      members.forEach((memberId) => {
+        console.log(
+          `Notify employee ${memberId}: You have been assigned to project "${newProject.name}"`
+        );
+        // TODO: Replace console.log with database notification system
+      });
+    }
+
     res.status(201).json({ message: "Project created", project: newProject });
   } catch (error) {
     next(error);
@@ -103,6 +112,24 @@ const updateProject = async (req, res, next) => {
     project.members = members || project.members;
     project.status = status || project.status;
     project.deadline = deadline || project.deadline;
+
+    // Detect newly added members for notifications
+    const oldMembers = project.members.map((m) =>
+      typeof m === "object" ? m._id.toString() : m.toString()
+    );
+    const newMembers = members || [];
+
+    const addedMembers = newMembers.filter(
+      (m) => !oldMembers.includes(m.toString())
+    );
+
+    // Notify newly added members
+    addedMembers.forEach((memberId) => {
+      console.log(
+        `Notify employee ${memberId}: You have been assigned to project "${project.name}"`
+      );
+      // TODO: Replace console.log with database notification system
+    });
 
     await project.save();
 

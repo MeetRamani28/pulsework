@@ -1,36 +1,38 @@
 const mongoose = require("mongoose");
 
+// Each work session (between start & pause/stop)
 const sessionSchema = new mongoose.Schema({
   startedAt: { type: Date, required: true },
   endedAt: { type: Date },
   duration: { type: Number, default: 0 }, // in seconds
 });
 
+// Main log per task-user
 const taskLogSchema = new mongoose.Schema(
   {
     task: { type: mongoose.Schema.Types.ObjectId, ref: "Task", required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    project: { type: mongoose.Schema.Types.ObjectId, ref: "Project" }, // shortcut for querying
+    project: { type: mongoose.Schema.Types.ObjectId, ref: "Project" }, // redundant but faster queries
 
-    startTime: { type: Date, required: true }, // first session start
-    endTime: { type: Date }, // last session end (final)
+    sessions: [sessionSchema], // all play/pause sessions
+    totalDuration: { type: Number, default: 0 }, // total in seconds
 
-    sessions: [sessionSchema], // track all play/pause sessions
-    totalDuration: { type: Number, default: 0 }, // total time (seconds)
-
-    isRunning: { type: Boolean, default: false }, // currently tracking
+    isRunning: { type: Boolean, default: false }, // if timer is active
     status: {
       type: String,
       enum: ["running", "paused", "stopped"],
-      default: "running",
+      default: "stopped",
     },
 
-    notes: { type: String },
+    startTime: { type: Date }, // first ever start
+    endTime: { type: Date }, // last stop time
+
+    notes: { type: String }, // optional user notes/comments
   },
   { timestamps: true }
 );
 
-// ✅ Calculate total duration before saving
+// Middleware: update totalDuration when saving
 taskLogSchema.pre("save", function (next) {
   if (this.sessions && this.sessions.length > 0) {
     this.totalDuration = this.sessions.reduce(
@@ -41,7 +43,7 @@ taskLogSchema.pre("save", function (next) {
   next();
 });
 
-// Optional: Helper method to get daily summary for this log
+// ✅ Utility method: Get daily duration for employee
 taskLogSchema.methods.getDailyDuration = function (date) {
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
@@ -52,14 +54,16 @@ taskLogSchema.methods.getDailyDuration = function (date) {
   this.sessions.forEach((s) => {
     const sessionStart = new Date(s.startedAt);
     const sessionEnd = s.endedAt ? new Date(s.endedAt) : new Date();
+
     if (sessionEnd >= startOfDay && sessionStart <= endOfDay) {
-      // Clip session to day boundaries
+      // Clip session inside the day
       const start = sessionStart < startOfDay ? startOfDay : sessionStart;
       const end = sessionEnd > endOfDay ? endOfDay : sessionEnd;
-      total += (end - start) / 1000;
+      total += (end - start) / 1000; // seconds
     }
   });
-  return total; // in seconds
+
+  return total;
 };
 
 module.exports = mongoose.model("TaskLog", taskLogSchema);

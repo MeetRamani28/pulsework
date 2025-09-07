@@ -23,15 +23,28 @@ const menuItems: MenuItem[] = [
   { name: "Dashboard", path: "", icon: DashboardIcon },
   { name: "Project", path: "project", icon: ProjectIcon },
   { name: "Tasks", path: "tasks", icon: TasksIcon },
-  { name: "Users", path: "user", icon: ProfileIcon, roles: ["admin"] }, // only for admin
+
+  // Admin only
+  { name: "Users", path: "user", icon: ProfileIcon, roles: ["admin"] },
+  { name: "Comments", path: "comments", icon: CommentIcon, roles: ["admin"] },
+
+  // Admin + Manager
   {
     name: "Work Logs",
     path: "work-logs",
     icon: Calendar1,
     roles: ["admin", "manager"],
   },
-  { name: "Comments", path: "comments", icon: CommentIcon,roles: ["admin"] },
-  { name: "Profile", path: "profile", icon: ProfileIcon }, // only for admin
+
+  // Employee only (their logs)
+  {
+    name: "Work Logs",
+    path: "work-logs",
+    icon: Calendar1,
+    roles: ["employee"],
+  },
+
+  { name: "Profile", path: "profile", icon: ProfileIcon },
 ];
 
 // Sidebar slide-in animation

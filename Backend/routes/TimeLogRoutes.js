@@ -10,6 +10,7 @@ const {
   getLogById,
   deleteLog,
   getAllLogs,
+  getDailySummary,
 } = require("../controllers/TimeLogController");
 const {
   authMiddleware,
@@ -52,6 +53,13 @@ router.put("/stop/:id", authMiddleware, stopLog);
 router.get("/me", authMiddleware, getMyLogs);
 
 /**
+ * @route   GET /timelogs/summary?date=YYYY-MM-DD
+ * @desc    Get daily summary (total hours + task count) for current user
+ * @access  Private
+ */
+router.get("/summary", authMiddleware, getDailySummary);
+
+/**
  * @route   GET /timelogs/getAllLogs
  * @desc    Get current user's logs (Admin/Manager only)
  * @access  Private
@@ -59,7 +67,7 @@ router.get("/me", authMiddleware, getMyLogs);
 router.get(
   "/getAllLogs",
   authMiddleware,
-  roleMiddleware(["admin", "manager"]),
+  roleMiddleware(["admin", "manager", "employee"]),
   getAllLogs
 );
 

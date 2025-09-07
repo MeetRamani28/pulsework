@@ -20,15 +20,18 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
 
   const { currentUser } = useSelector((state: RootState) => state.users);
-  const { lastCompletedTask } = useSelector((state: RootState) => state.tasks);
-  const { lastCompletedProject } = useSelector(
+  const { lastCompletedTask, tasks } = useSelector(
+    (state: RootState) => state.tasks
+  );
+  const { lastCompletedProject, projects } = useSelector(
     (state: RootState) => state.projects
   );
-  const { tasks } = useSelector((state: RootState) => state.tasks);
-  const { projects } = useSelector((state: RootState) => state.projects);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [managerNotifications, setManagerNotifications] = useState<
+    SearchItem[]
+  >([]);
+  const [employeeNotifications, setEmployeeNotifications] = useState<
     SearchItem[]
   >([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -38,7 +41,7 @@ const Header: React.FC = () => {
     if (!currentUser) dispatch(getCurrentUser());
   }, [dispatch, currentUser]);
 
-  // Track newly completed tasks/projects for manager
+  // Manager notifications for completed tasks/projects
   useEffect(() => {
     if (!currentUser || currentUser.roles?.toLowerCase() !== "manager") return;
 
@@ -54,7 +57,6 @@ const Header: React.FC = () => {
     }
 
     if (lastCompletedProject) {
-      // Ensure the manager owns the project
       const isManager =
         typeof lastCompletedProject.manager === "string"
           ? lastCompletedProject.manager === currentUser._id
@@ -74,6 +76,54 @@ const Header: React.FC = () => {
       setManagerNotifications((prev) => [...prev, ...newNotifications]);
     }
   }, [lastCompletedTask, lastCompletedProject, currentUser, dispatch]);
+
+  // Employee notifications for newly assigned tasks/projects
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const readNotifications: string[] = JSON.parse(
+      localStorage.getItem("readNotifications") || "[]"
+    );
+
+    const newTaskNotifications = tasks
+      .filter((t) => {
+        const assignedArray = Array.isArray(t.assignedTo) ? t.assignedTo : [];
+        return (
+          assignedArray.some((a) =>
+            typeof a === "string"
+              ? a === currentUser._id
+              : a._id === currentUser._id
+          ) && !readNotifications.includes(t._id)
+        );
+      })
+      .map((t) => ({ id: t._id, type: "task" as const, name: t.title }));
+
+    const newProjectNotifications = projects
+      .filter((p) => {
+        return (
+          p.members?.some((m) =>
+            typeof m === "string"
+              ? m === currentUser._id
+              : m._id === currentUser._id
+          ) && !readNotifications.includes(p._id)
+        );
+      })
+      .map((p) => ({ id: p._id, type: "project" as const, name: p.name }));
+
+    if (newTaskNotifications.length || newProjectNotifications.length) {
+      setEmployeeNotifications((prev) => {
+        const combined = [
+          ...prev,
+          ...newTaskNotifications,
+          ...newProjectNotifications,
+        ];
+        // Remove duplicates
+        return combined.filter(
+          (v, i, a) => a.findIndex((t) => t.id === v.id) === i
+        );
+      });
+    }
+  }, [tasks, projects, currentUser]);
 
   // Searchable items
   const allItems: SearchItem[] = useMemo(() => {
@@ -98,10 +148,6 @@ const Header: React.FC = () => {
       })
       .map((p) => p._id);
 
-    const projectItems: SearchItem[] = projects
-      .filter((p) => userProjectIds.includes(p._id))
-      .map((p) => ({ id: p._id, type: "project", name: p.name }));
-
     type AssignedUser = string | { _id: string; name?: string };
     const taskItems: SearchItem[] = tasks
       .filter((t) => {
@@ -122,6 +168,10 @@ const Header: React.FC = () => {
         return belongsToUserProject || isAssigned;
       })
       .map((t) => ({ id: t._id, type: "task", name: t.title }));
+
+    const projectItems: SearchItem[] = projects
+      .filter((p) => userProjectIds.includes(p._id))
+      .map((p) => ({ id: p._id, type: "project", name: p.name }));
 
     return [...taskItems, ...projectItems, ...userItems];
   }, [tasks, projects, currentUser]);
@@ -151,15 +201,37 @@ const Header: React.FC = () => {
   };
 
   const handleNotificationClick = (item: SearchItem) => {
-    switch (item.type) {
-      case "task":
-        navigate(`/manager/tasks`);
-        break;
-      case "project":
-        navigate(`/manager/project`);
-        break;
+    if (role === "manager") {
+      switch (item.type) {
+        case "task":
+          navigate(`/manager/tasks`);
+          break;
+        case "project":
+          navigate(`/manager/project`);
+          break;
+      }
+      setManagerNotifications((prev) => prev.filter((n) => n.id !== item.id));
+    } else {
+      // Employee notifications
+      switch (item.type) {
+        case "task":
+          navigate(`/${role}/tasks`);
+          break;
+        case "project":
+          navigate(`/${role}/project`);
+          break;
+      }
+      // Save clicked notification to localStorage
+      const readNotifications: string[] = JSON.parse(
+        localStorage.getItem("readNotifications") || "[]"
+      );
+      localStorage.setItem(
+        "readNotifications",
+        JSON.stringify([...readNotifications, item.id])
+      );
+
+      setEmployeeNotifications((prev) => prev.filter((n) => n.id !== item.id));
     }
-    setManagerNotifications((prev) => prev.filter((n) => n.id !== item.id));
     setShowNotifications(false);
   };
 
@@ -171,6 +243,9 @@ const Header: React.FC = () => {
       console.error("Logout failed", err);
     }
   };
+
+  const notifications =
+    role === "manager" ? managerNotifications : employeeNotifications;
 
   return (
     <motion.header
@@ -228,21 +303,21 @@ const Header: React.FC = () => {
             className="h-6 w-6 text-gray-600 hover:text-indigo-600 cursor-pointer"
             onClick={() => setShowNotifications((prev) => !prev)}
           />
-          {managerNotifications.length > 0 && (
+          {notifications.length > 0 && (
             <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-              {managerNotifications.length}
+              {notifications.length}
             </span>
           )}
 
           <AnimatePresence>
-            {showNotifications && managerNotifications.length > 0 && (
+            {showNotifications && notifications.length > 0 && (
               <motion.ul
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 className="absolute right-0 mt-2 w-60 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto z-50"
               >
-                {managerNotifications.map((item) => (
+                {notifications.map((item) => (
                   <li
                     key={item.id}
                     onClick={() => handleNotificationClick(item)}
@@ -267,7 +342,6 @@ const Header: React.FC = () => {
             </p>
           </div>
 
-          {/* Profile Picture */}
           {currentUser?.profilePicture ? (
             <motion.img
               src={`${import.meta.env.VITE_API_URL}/${
@@ -286,7 +360,6 @@ const Header: React.FC = () => {
             />
           )}
 
-          {/* Logout Button */}
           <motion.button
             onClick={handleLogout}
             className="ml-2 flex items-center px-2 py-1 rounded text-red-600 hover:border-red-600"

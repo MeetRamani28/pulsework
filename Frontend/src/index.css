@@ -28,9 +28,9 @@ input[type="password"]::-webkit-textfield-decoration-container {
 /* Hide scrollbar */
 /* hide scrollbar but keep scroll functionality */
 .custom-scrollbar {
-  -ms-overflow-style: none !important;  /* IE & Edge */
-  scrollbar-width: none !important;     /* Firefox */
-  -webkit-overflow-scrolling: touch;     /* smooth scrolling on iOS */
+  -ms-overflow-style: none !important; /* IE & Edge */
+  scrollbar-width: none !important; /* Firefox */
+  -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -45,4 +45,88 @@ input[type="password"]::-webkit-textfield-decoration-container {
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: transparent !important;
+}
+
+.fc .fc-button-primary.fc-button-active,
+.fc .fc-button-primary:focus {
+  background-color: #3b82f6 !important; /* Tailwind blue-500 */
+  color: white !important;
+  border: none;
+  font-weight: 600;
+  border-radius: 0.5rem;
+}
+
+/* Allow event titles to break lines */
+.fc-event-title {
+  white-space: pre-line;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Toolbar title */
+.fc .fc-toolbar-title {
+  color: #3b82f6; /* dark blue */
+  font-weight: 700;
+}
+
+/* Toolbar buttons */
+.fc .fc-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  font-weight: 600;
+}
+
+.fc .fc-button:hover {
+  background-color: #2563eb; /* darker blue on hover */
+}
+
+.fc .fc-button:focus {
+  box-shadow: none;
+}
+
+.fc .fc-button-primary:disabled {
+  background-color: #3b82f6;
+}
+
+/* Navigation arrows */
+.fc .fc-prev-button,
+.fc .fc-next-button {
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 4px;
+}
+
+.fc .fc-prev-button:hover,
+.fc .fc-next-button:hover {
+  background-color: #2563eb;
+}
+
+/* Event style */
+.fc .fc-event {
+  background-color: #3b82f6;
+  border: none;
+  color: white;
+  font-weight: 600;
+  white-space: pre-line;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+/* Month day numbers */
+.fc .fc-daygrid-day-number {
+  color: blue; /* dark blue for numbers */
+  font-weight: 600;
+}
+
+/* Column headers (Mon, Tue, ...) */
+.fc .fc-col-header-cell-cushion {
+  color: blue; /* dark blue */
+  font-weight: 600;
+}
+
+/* Today highlight (optional) */
+.fc .fc-day-today {
+  background-color: #dbeafe; /* light blue background */
+  border-radius: 6px;
 }
