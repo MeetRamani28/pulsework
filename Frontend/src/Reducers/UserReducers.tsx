@@ -40,7 +40,7 @@ const initialState: UserState = {
 
 // ================== Async Thunks ==================
 
-// ✅ Get logged-in user profile
+// Get logged-in user profile
 export const getCurrentUser = createAsyncThunk<
   User,
   void,
@@ -60,7 +60,7 @@ export const getCurrentUser = createAsyncThunk<
   }
 });
 
-// ✅ Update my profile
+// Update my profile
 export const updateMyProfile = createAsyncThunk<
   User,
   FormData,
@@ -83,7 +83,7 @@ export const updateMyProfile = createAsyncThunk<
   }
 });
 
-// ✅ Get all users (admin only)
+// Get all users
 export const getAllUsers = createAsyncThunk<
   User[],
   void,
@@ -103,7 +103,7 @@ export const getAllUsers = createAsyncThunk<
   }
 });
 
-// ✅ Get user by ID (admin/manager)
+// Get user by ID
 export const getUserById = createAsyncThunk<
   User,
   string,
@@ -121,7 +121,7 @@ export const getUserById = createAsyncThunk<
   }
 });
 
-// ✅ Update user (admin/manager)
+// Update user (admin/manager)
 export const updateUser = createAsyncThunk<
   User,
   { id: string; formData: FormData },
@@ -144,7 +144,7 @@ export const updateUser = createAsyncThunk<
   }
 });
 
-// ✅ Delete user (admin only)
+// Delete user
 export const deleteUser = createAsyncThunk<
   string,
   string,
@@ -175,6 +175,12 @@ const userSlice = createSlice({
     clearUserSuccess: (state) => {
       state.success = false;
     },
+    resetUsersState: (state) => {
+      state.loading = false;
+      state.error = null;
+      state.success = false;
+      state.selectedUser = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -192,9 +198,17 @@ const userSlice = createSlice({
       })
 
       // Update my profile
+      .addCase(updateMyProfile.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(updateMyProfile.fulfilled, (state, action) => {
+        state.loading = false;
         state.currentUser = action.payload;
         state.success = true;
+      })
+      .addCase(updateMyProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || null;
       })
 
       // Get all users
@@ -211,31 +225,54 @@ const userSlice = createSlice({
       })
 
       // Get user by ID
+      .addCase(getUserById.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(getUserById.fulfilled, (state, action) => {
+        state.loading = false;
         state.selectedUser = action.payload;
       })
+      .addCase(getUserById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || null;
+      })
 
-      // Update user (admin/manager)
+      // Update user
+      .addCase(updateUser.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(updateUser.fulfilled, (state, action) => {
+        state.loading = false;
         state.users = state.users.map((u) =>
           u._id === action.payload._id ? action.payload : u
         );
-        if (state.selectedUser?._id === action.payload._id) {
+        if (state.selectedUser?._id === action.payload._id)
           state.selectedUser = action.payload;
-        }
         state.success = true;
+      })
+      .addCase(updateUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || null;
       })
 
       // Delete user
+      .addCase(deleteUser.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(deleteUser.fulfilled, (state, action) => {
+        state.loading = false;
         state.users = state.users.filter((u) => u._id !== action.payload);
-        if (state.selectedUser?._id === action.payload) {
+        if (state.selectedUser?._id === action.payload)
           state.selectedUser = null;
-        }
         state.success = true;
+      })
+      .addCase(deleteUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || null;
       });
   },
 });
 
-export const { clearUserError, clearUserSuccess } = userSlice.actions;
+export const { clearUserError, clearUserSuccess, resetUsersState } =
+  userSlice.actions;
 export default userSlice.reducer;

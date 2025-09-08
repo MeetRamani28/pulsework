@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../store/store";
 import {
   getAllUsers,
   deleteUser,
   updateUser,
-  clearUserError,
-  clearUserSuccess,
 } from "../../Reducers/UserReducers";
+import { registerUser } from "../../Reducers/AuthReducers";
 import type { User } from "../../Reducers/UserReducers";
 import { Loader2, User as UserIcon, X } from "lucide-react";
 import { motion } from "framer-motion";
@@ -33,13 +32,12 @@ interface UserForm {
 
 const AdminUsers: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { users, loading, error, success } = useSelector(
-    (state: RootState) => state.users
-  );
+  const { users, loading } = useSelector((state: RootState) => state.users);
 
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
 
   const [form, setForm] = useState<UserForm>({
     name: "",
@@ -53,66 +51,86 @@ const AdminUsers: React.FC = () => {
     profilePicture: null,
   });
 
-  // Fetch all users
+  // Fetch all users on mount
   useEffect(() => {
     dispatch(getAllUsers());
   }, [dispatch]);
 
-  // Handle success & error
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-      dispatch(clearUserError());
-    }
-    if (success) {
-      toast.success(
-        editMode ? "User updated successfully" : "User created successfully"
-      );
-      dispatch(clearUserSuccess());
-      setShowForm(false);
-      setEditMode(false);
-      setCurrentId(null);
-      setForm({
-        name: "",
-        email: "",
-        roles: "employee",
-        bio: "",
-        phone: "",
-        jobTitle: "",
-        department: "",
-        location: "",
-        profilePicture: null,
-      });
-    }
-  }, [error, success, dispatch, editMode]);
-
-  // Handle form submit
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim() || !form.email.trim())
-      return toast.error("Name & Email are required!");
-
-    const formData = new FormData();
-    Object.entries(form).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-        formData.append(key, value as string | Blob);
-      }
+  // Reset form
+  const resetForm = useCallback(() => {
+    setShowForm(false);
+    setEditMode(false);
+    setCurrentId(null);
+    setForm({
+      name: "",
+      email: "",
+      roles: "employee",
+      bio: "",
+      phone: "",
+      jobTitle: "",
+      department: "",
+      location: "",
+      profilePicture: null,
     });
+    dispatch(getAllUsers());
+  }, [dispatch]);
 
-    if (editMode && currentId) {
-      dispatch(updateUser({ id: currentId, formData }));
-    } else {
-      toast.error("Create user not implemented in this snippet");
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.roles.trim()) {
+      return toast.error("Name, Email & Role are required!");
+    }
+
+    try {
+      setFormSubmitting(true);
+      if (editMode && currentId) {
+        const formData = new FormData();
+        Object.entries(form).forEach(([key, value]) => {
+          if (value !== null && value !== undefined)
+            formData.append(key, value as string | Blob);
+        });
+        await dispatch(updateUser({ id: currentId, formData })).unwrap();
+        toast.success("User updated successfully");
+      } else {
+        await dispatch(
+          registerUser({
+            name: form.name,
+            email: form.email,
+            password: "defaultPassword123",
+            roles: form.roles,
+          })
+        ).unwrap();
+        toast.success("User registered successfully");
+      }
+      resetForm();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Something went wrong!");
+      }
+    } finally {
+      setFormSubmitting(false);
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this user?")) {
-      dispatch(deleteUser(id));
-      toast.success("User deleted successfully 🗑️");
+  // Delete user
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+    try {
+      await dispatch(deleteUser(id)).unwrap();
+      toast.success("User deleted successfully");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to delete user!");
+      }
     }
   };
 
+  // Edit user
   const handleEdit = (user: User) => {
     setCurrentId(user._id);
     setForm({
@@ -136,22 +154,8 @@ const AdminUsers: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-blue-600">Users</h1>
         <button
-          onClick={() => {
-            setShowForm(true);
-            setEditMode(false);
-            setForm({
-              name: "",
-              email: "",
-              roles: "employee",
-              bio: "",
-              phone: "",
-              jobTitle: "",
-              department: "",
-              location: "",
-              profilePicture: null,
-            });
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg shadow transition hover:bg-blue-100"
+          onClick={() => setShowForm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg shadow hover:bg-blue-100 transition"
         >
           <PlusCircle stroke="#2563eb" height={20} /> Add User
         </button>
@@ -164,16 +168,13 @@ const AdminUsers: React.FC = () => {
         </div>
       )}
 
-      {/* User Cards */}
+      {/* Users */}
       {!loading && users.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {users.map((u) => {
             const profileImageUrl = u.profilePicture
               ? `${import.meta.env.VITE_API_URL}/${u.profilePicture}`
               : null;
-
-            console.log("Profile Image URL:", profileImageUrl);
-
             return (
               <motion.div
                 key={u._id}
@@ -198,20 +199,15 @@ const AdminUsers: React.FC = () => {
                     <span className="text-gray-500 text-sm">{u.roles}</span>
                   </div>
                 </div>
-
                 <p className="text-gray-600 text-sm mb-4 line-clamp-2">
                   {u.email}
                 </p>
-
-                {/* Meta */}
                 <div className="flex flex-col gap-1 text-sm text-gray-500 mb-4">
                   {u.jobTitle && <div>Job Title: {u.jobTitle}</div>}
                   {u.department && <div>Department: {u.department}</div>}
                   {u.location && <div>Location: {u.location}</div>}
                   {u.phone && <div>Phone: {u.phone}</div>}
                 </div>
-
-                {/* Actions */}
                 <div className="flex justify-end gap-3">
                   <button
                     onClick={() => handleEdit(u)}
@@ -232,14 +228,14 @@ const AdminUsers: React.FC = () => {
         </div>
       )}
 
-      {/* Empty State */}
+      {/* Empty */}
       {!loading && users.length === 0 && (
         <div className="text-center text-gray-500 italic py-10">
           No users found.
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <motion.div
@@ -248,7 +244,6 @@ const AdminUsers: React.FC = () => {
             exit={{ scale: 0.95, opacity: 0 }}
             className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-y-auto max-h-[90vh] custom-scrollbar"
           >
-            {/* Close */}
             <button
               onClick={() => setShowForm(false)}
               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition"
@@ -256,16 +251,13 @@ const AdminUsers: React.FC = () => {
               <X size={20} />
             </button>
 
-            {/* Header */}
             <div className="px-6 pt-6 pb-4 border-b">
               <h2 className="text-xl font-bold text-gray-800">
                 {editMode ? "Edit User" : "Create User"}
               </h2>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
-              {/* Name */}
               <div>
                 <label className="block text-sm text-gray-600">Name</label>
                 <input
@@ -277,7 +269,6 @@ const AdminUsers: React.FC = () => {
                 />
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-sm text-gray-600">Email</label>
                 <input
@@ -289,7 +280,6 @@ const AdminUsers: React.FC = () => {
                 />
               </div>
 
-              {/* Role Dropdown */}
               <div>
                 <label className="block text-sm text-gray-600">Role</label>
                 <CustomDropdown
@@ -304,7 +294,6 @@ const AdminUsers: React.FC = () => {
                 />
               </div>
 
-              {/* Optional fields */}
               <div>
                 <label className="block text-sm text-gray-600">Bio</label>
                 <textarea
@@ -368,7 +357,6 @@ const AdminUsers: React.FC = () => {
                 </div>
               </div>
 
-              {/* Profile Picture */}
               <div>
                 <label className="block text-sm text-gray-600">
                   Profile Picture
@@ -385,31 +373,31 @@ const AdminUsers: React.FC = () => {
                   className="w-full mt-1"
                 />
               </div>
-            </form>
 
-            {/* Actions */}
-            <div className="px-6 py-4 border-t flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                onClick={handleSubmit}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin w-5 h-5" />
-                ) : editMode ? (
-                  "Update"
-                ) : (
-                  "Create"
-                )}
-              </button>
-            </div>
+              <div className="px-6 py-4 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+                  disabled={formSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+                  disabled={formSubmitting}
+                >
+                  {formSubmitting ? (
+                    <Loader2 className="animate-spin w-5 h-5" />
+                  ) : editMode ? (
+                    "Update"
+                  ) : (
+                    "Create"
+                  )}
+                </button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}

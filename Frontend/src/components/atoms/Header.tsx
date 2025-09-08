@@ -10,6 +10,11 @@ import { logoutUser } from "../../Reducers/AuthReducers";
 import { getCurrentUser } from "../../Reducers/UserReducers";
 import { clearLastCompletedProject } from "../../Reducers/ProjectReducers";
 import { clearLastCompletedTask } from "../../Reducers/TaskReducers";
+import {
+  getUserNotifications,
+  markNotificationRead,
+} from "../../Reducers/NotificationReducers";
+import type { Notification } from "../../Reducers/NotificationReducers";
 
 interface SearchItem {
   id: string;
@@ -28,14 +33,11 @@ const Header: React.FC = () => {
   const { lastCompletedProject, projects } = useSelector(
     (state: RootState) => state.projects
   );
+  const { notifications } = useSelector(
+    (state: RootState) => state.notifications
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [managerNotifications, setManagerNotifications] = useState<
-    SearchItem[]
-  >([]);
-  const [employeeNotifications, setEmployeeNotifications] = useState<
-    SearchItem[]
-  >([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
   // Load current user
@@ -43,90 +45,30 @@ const Header: React.FC = () => {
     if (!currentUser) dispatch(getCurrentUser());
   }, [dispatch, currentUser]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+
+    dispatch(getUserNotifications(currentUser._id));
+
+    const interval = setInterval(() => {
+      dispatch(getUserNotifications(currentUser._id));
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [dispatch, currentUser]);
+
   // ✅ Manager notifications for completed tasks/projects
   useEffect(() => {
     if (!currentUser || currentUser.roles?.toLowerCase() !== "manager") return;
 
-    const newNotifications: SearchItem[] = [];
-
-    if (lastCompletedTask) {
-      newNotifications.push({
-        id: lastCompletedTask._id,
-        type: "task",
-        name: lastCompletedTask.title,
-      });
-    }
-
-    if (lastCompletedProject) {
-      const isManager =
-        typeof lastCompletedProject.manager === "string"
-          ? lastCompletedProject.manager === currentUser._id
-          : lastCompletedProject.manager?._id === currentUser._id;
-
-      if (isManager) {
-        newNotifications.push({
-          id: lastCompletedProject._id,
-          type: "project",
-          name: lastCompletedProject.name,
-        });
-      }
-    }
-
-    if (newNotifications.length > 0) {
-      setManagerNotifications((prev) => [...prev, ...newNotifications]);
+    if (lastCompletedTask || lastCompletedProject) {
       dispatch(clearLastCompletedTask());
       dispatch(clearLastCompletedProject());
     }
   }, [lastCompletedTask, lastCompletedProject, currentUser, dispatch]);
 
-  // ✅ Employee notifications for assigned tasks/projects
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const readNotifications: string[] = JSON.parse(
-      localStorage.getItem("readNotifications") || "[]"
-    );
-
-    const newTaskNotifications = tasks
-      .filter((t) => {
-        const assignedArray = Array.isArray(t.assignedTo) ? t.assignedTo : [];
-        return (
-          assignedArray.some((a) =>
-            typeof a === "string"
-              ? a === currentUser._id
-              : a._id === currentUser._id
-          ) && !readNotifications.includes(t._id)
-        );
-      })
-      .map((t) => ({ id: t._id, type: "task" as const, name: t.title }));
-
-    const newProjectNotifications = projects
-      .filter((p) => {
-        return (
-          p.members?.some((m) =>
-            typeof m === "string"
-              ? m === currentUser._id
-              : m._id === currentUser._id
-          ) && !readNotifications.includes(p._id)
-        );
-      })
-      .map((p) => ({ id: p._id, type: "project" as const, name: p.name }));
-
-    if (newTaskNotifications.length || newProjectNotifications.length) {
-      setEmployeeNotifications((prev) => {
-        const combined = [
-          ...prev,
-          ...newTaskNotifications,
-          ...newProjectNotifications,
-        ];
-        return combined.filter(
-          (v, i, a) => a.findIndex((t) => t.id === v.id) === i
-        );
-      });
-    }
-  }, [tasks, projects, currentUser]);
-
   const role = currentUser?.roles?.toLowerCase() || "employee";
+
   // ✅ Searchable items
   const allItems: SearchItem[] = useMemo(() => {
     if (!currentUser) return [];
@@ -258,37 +200,16 @@ const Header: React.FC = () => {
     }
   };
 
-  const handleNotificationClick = (item: SearchItem) => {
+  const handleNotificationClick = (item: Notification) => {
     if (role === "manager") {
-      switch (item.type) {
-        case "task":
-          navigate(`/manager/tasks`);
-          break;
-        case "project":
-          navigate(`/manager/project`);
-          break;
-      }
-      setManagerNotifications((prev) => prev.filter((n) => n.id !== item.id));
+      if (item.task) navigate(`/manager/tasks`);
+      if (item.project) navigate(`/manager/project`);
     } else {
-      switch (item.type) {
-        case "task":
-          navigate(`/${role}/tasks`);
-          break;
-        case "project":
-          navigate(`/${role}/project`);
-          break;
-      }
-      const readNotifications: string[] = JSON.parse(
-        localStorage.getItem("readNotifications") || "[]"
-      );
-      if (!readNotifications.includes(item.id)) {
-        localStorage.setItem(
-          "readNotifications",
-          JSON.stringify([...readNotifications, item.id])
-        );
-      }
-      setEmployeeNotifications((prev) => prev.filter((n) => n.id !== item.id));
+      if (item.task) navigate(`/${role}/tasks`);
+      if (item.project) navigate(`/${role}/project`);
     }
+
+    if (!item.isRead) dispatch(markNotificationRead(item._id));
     setShowNotifications(false);
   };
 
@@ -302,8 +223,7 @@ const Header: React.FC = () => {
     }
   };
 
-  const notifications =
-    role === "manager" ? managerNotifications : employeeNotifications;
+  const unreadNotifications = notifications.filter((n) => !n.isRead);
 
   return (
     <motion.header
@@ -361,27 +281,29 @@ const Header: React.FC = () => {
             className="h-6 w-6 text-gray-600 hover:text-indigo-600 cursor-pointer"
             onClick={() => setShowNotifications((prev) => !prev)}
           />
-          {notifications.length > 0 && (
+          {unreadNotifications.filter((n) => !n.isRead).length > 0 && (
             <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-              {notifications.length}
+              {unreadNotifications.filter((n) => !n.isRead).length}
             </span>
           )}
 
           <AnimatePresence>
-            {showNotifications && notifications.length > 0 && (
+            {showNotifications && unreadNotifications.length > 0 && (
               <motion.ul
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 className="absolute right-0 mt-2 w-60 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto z-50"
               >
-                {notifications.map((item) => (
+                {unreadNotifications.map((n) => (
                   <li
-                    key={item.id}
-                    onClick={() => handleNotificationClick(item)}
-                    className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700"
+                    key={n._id}
+                    onClick={() => handleNotificationClick(n)}
+                    className={`px-4 py-2 cursor-pointer text-sm text-gray-700 ${
+                      n.isRead ? "bg-gray-50" : "font-semibold bg-blue-50"
+                    } hover:bg-blue-100`}
                   >
-                    {item.name} ({item.type})
+                    {n.message}
                   </li>
                 ))}
               </motion.ul>

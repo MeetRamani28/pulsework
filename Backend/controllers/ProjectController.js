@@ -1,4 +1,6 @@
 const Project = require("../models/Project");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
 
 // Create Project
 const createProject = async (req, res, next) => {
@@ -19,13 +21,32 @@ const createProject = async (req, res, next) => {
       deadline,
     });
 
-    if (members && members.length > 0) {
-      members.forEach((memberId) => {
-        console.log(
-          `Notify employee ${memberId}: You have been assigned to project "${newProject.name}"`
-        );
-        // TODO: Replace console.log with database notification system
+    // 🔔 Notify assigned manager
+     if (newProject.manager) {
+      const notif = await Notification.create({
+        user: newProject.manager,
+        project: newProject._id,
+        event: "PROJECT_ASSIGNED",
+        message: `You have been assigned as manager for project "${newProject.name}"`,
       });
+      await User.findByIdAndUpdate(newProject.manager, {
+        $push: { notifications: notif._id },
+      });
+    }
+
+    // 🔔 Notify members
+    if (members && members.length > 0) {
+      for (const memberId of members) {
+        const notif = await Notification.create({
+          user: memberId,
+          project: newProject._id,
+          event: "PROJECT_ASSIGNED",
+          message: `You have been assigned to project "${newProject.name}"`,
+        });
+        await User.findByIdAndUpdate(memberId, {
+          $push: { notifications: notif._id },
+        });
+      }
     }
 
     res.status(201).json({ message: "Project created", project: newProject });
@@ -104,6 +125,10 @@ const updateProject = async (req, res, next) => {
     }
 
     const wasCompleted = project.status === "completed";
+    // Keep track of old members
+    const oldMembers = project.members.map((m) =>
+      typeof m === "object" ? m._id.toString() : m.toString()
+    );
 
     // Update fields
     project.name = name || project.name;
@@ -113,32 +138,38 @@ const updateProject = async (req, res, next) => {
     project.status = status || project.status;
     project.deadline = deadline || project.deadline;
 
-    // Detect newly added members for notifications
-    const oldMembers = project.members.map((m) =>
-      typeof m === "object" ? m._id.toString() : m.toString()
-    );
-    const newMembers = members || [];
+    await project.save();
 
+    const newMembers = members || [];
     const addedMembers = newMembers.filter(
       (m) => !oldMembers.includes(m.toString())
     );
 
-    // Notify newly added members
-    addedMembers.forEach((memberId) => {
-      console.log(
-        `Notify employee ${memberId}: You have been assigned to project "${project.name}"`
-      );
-      // TODO: Replace console.log with database notification system
-    });
+     for (const memberId of addedMembers) {
+      const notif = await Notification.create({
+        user: memberId,
+        project: project._id,
+        event: "PROJECT_ASSIGNED",
+        message: `You have been added to project "${project.name}"`,
+      });
+      await User.findByIdAndUpdate(memberId, {
+        $push: { notifications: notif._id },
+      });
+    }
 
-    await project.save();
-
-    // Notify manager if newly completed
-    if (!wasCompleted && project.status === "completed" && project.manager) {
-      console.log(
-        `Notify manager ${project.manager.name}: Project "${project.name}" completed`
-      );
-      // TODO: Replace console.log with real notification system
+    if (!wasCompleted && project.status === "completed") {
+      const admins = await User.find({ roles: "admin" });
+      for (const admin of admins) {
+        const notif = await Notification.create({
+          user: admin._id,
+          project: project._id,
+          event: "PROJECT_COMPLETED",
+          message: `Project "${project.name}" has been completed`,
+        });
+        await User.findByIdAndUpdate(admin._id, {
+          $push: { notifications: notif._id },
+        });
+      }
     }
 
     res.status(200).json({ message: "Project updated", project });

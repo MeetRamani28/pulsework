@@ -92,7 +92,17 @@ const loginUser = async (req, res, next) => {
 const getCurrentUser = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const user = await usermodel.findById(userId).select("-password");
+    const user = await usermodel
+      .findById(userId)
+      .select("-password")
+      .populate({
+        path: "notifications",
+        populate: [
+          { path: "project", select: "name status" },
+          { path: "task", select: "title status" },
+        ],
+        options: { sort: { createdAt: -1 } },
+      });
     if (!user) {
       const error = new Error("User not found");
       error.statusCode = 404;

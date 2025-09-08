@@ -15,6 +15,7 @@ const projectRoutes = require("./routes/ProjectRoutes");
 const taskRoutes = require("./routes/TaskRoutes");
 const timeLogRoutes = require("./routes/TimeLogRoutes");
 const commentRoutes = require("./routes/CommentRoutes");
+const notificationRoutes = require("./routes/NotificationRoutes");
 
 app.use(
   cors({
@@ -48,6 +49,7 @@ app.use("/projects", projectRoutes);
 app.use("/tasks", taskRoutes);
 app.use("/timelogs", timeLogRoutes);
 app.use("/comments", commentRoutes);
+app.use("/notifications", notificationRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Welcome to the WorkChrono✨!" });

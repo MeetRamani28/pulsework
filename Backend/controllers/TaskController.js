@@ -1,5 +1,7 @@
 const Task = require("../models/Task");
 const Project = require("../models/Project");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
 
 // ✅ Create a Task
 const createTask = async (req, res, next) => {
@@ -38,6 +40,20 @@ const createTask = async (req, res, next) => {
       assignedTo,
       createdBy: req.user.id, // from authMiddleware
     });
+
+    if (assignedTo) {
+      const notif = await Notification.create({
+        user: assignedTo,
+        task: task._id,
+        project: projectExists._id,
+        event: "TASK_ASSIGNED",
+        message: `You have been assigned task "${task.title}" in project "${projectExists.name}"`,
+      });
+
+      await User.findByIdAndUpdate(assignedTo, {
+        $push: { notifications: notif._id },
+      });
+    }
 
     res.status(201).json({ message: "Task created successfully", task });
   } catch (error) {
@@ -128,14 +144,21 @@ const updateTask = async (req, res, next) => {
     Object.assign(task, req.body);
     await task.save();
 
-    // If task is newly completed, notify manager
+    // 🔔 Notify project manager when completed
     if (!wasCompleted && task.status === "completed") {
       const project = await Project.findById(task.project).populate("manager");
       if (project?.manager) {
-        // Here you can implement a real notification system (WebSocket, DB, etc.)
-        console.log(
-          `Notify manager ${project.manager.name}: Task "${task.title}" completed`
-        );
+        const notif = await Notification.create({
+          user: project.manager._id,
+          task: task._id,
+          project: project._id,
+          event: "TASK_COMPLETED",
+          message: `Task "${task.title}" has been completed`,
+        });
+
+        await User.findByIdAndUpdate(project.manager._id, {
+          $push: { notifications: notif._id },
+        });
       }
     }
 

@@ -33,6 +33,9 @@ const userSchema = new mongoose.Schema(
     jobTitle: { type: String },
     department: { type: String },
     location: { type: String },
+    notifications: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Notification" }
+    ],
   },
   { timestamps: true }
 );

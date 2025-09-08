@@ -43,6 +43,7 @@ const AdminProject: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [form, setForm] = useState<ProjectForm>({
     name: "",
@@ -66,7 +67,7 @@ const AdminProject: React.FC = () => {
       dispatch(clearProjectError());
     }
 
-    if (success) {
+    if (success && !deleteId) {
       toast.success(
         editMode
           ? "Project updated successfully"
@@ -84,18 +85,30 @@ const AdminProject: React.FC = () => {
         deadline: "",
       });
     }
-  }, [error, success, dispatch, editMode]);
+    if (success && deleteId) {
+      toast.success("Project deleted successfully 🗑️");
+      dispatch(clearProjectSuccess());
+      setDeleteId(null);
+    }
+  }, [error, success, dispatch, editMode, deleteId]);
 
   // Create or update project
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Project name is required!");
     if (!form.manager) return toast.error("A project must have one manager!");
 
-    if (editMode && currentId) {
-      dispatch(updateProject({ id: currentId, updates: form }));
-    } else {
-      dispatch(createProject(form));
+    try {
+      if (editMode && currentId) {
+        await dispatch(
+          updateProject({ id: currentId, updates: form })
+        ).unwrap();
+      } else {
+        await dispatch(createProject(form)).unwrap();
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) toast.error(err.message);
+      else toast.error("Something went wrong!");
     }
   };
 
@@ -103,7 +116,7 @@ const AdminProject: React.FC = () => {
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to delete this project?")) {
       dispatch(deleteProject(id));
-      toast.success("Project deleted successfully 🗑️");
+      setDeleteId(id);
     }
   };
 

@@ -3,7 +3,17 @@ const userModel = require("../models/User");
 // ✅ Get all users (admin only)
 const getAllUsers = async (req, res, next) => {
   try {
-    const users = await userModel.find().select("-password");
+    const users = await userModel
+      .find()
+      .select("-password")
+      .populate({
+        path: "notifications",
+        populate: [
+          { path: "project", select: "name status" },
+          { path: "task", select: "title status" },
+        ],
+        options: { sort: { createdAt: -1 } },
+      });
     res.status(200).json(users);
   } catch (error) {
     next(error); // 👈 Pass to error middleware
@@ -13,7 +23,18 @@ const getAllUsers = async (req, res, next) => {
 // ✅ Get single user by ID
 const getUserById = async (req, res, next) => {
   try {
-    const user = await userModel.findById(req.params.id).select("-password");
+    const user = await userModel
+      .findById(req.params.id)
+      .select("-password")
+      .populate({
+        path: "notifications",
+        populate: [
+          { path: "project", select: "name status" },
+          { path: "task", select: "title status" },
+        ],
+        options: { sort: { createdAt: -1 } },
+      });
+
     if (!user) {
       const err = new Error("User not found");
       err.statusCode = 404;
@@ -28,8 +49,17 @@ const getUserById = async (req, res, next) => {
 // ✅ Update user profile (self or admin/manager)
 const updateUser = async (req, res, next) => {
   try {
-    const { name, email, roles, bio, phone, jobTitle, department, location } = req.body;
-    const updateData = { name, email, bio, phone, jobTitle, department, location };
+    const { name, email, roles, bio, phone, jobTitle, department, location } =
+      req.body;
+    const updateData = {
+      name,
+      email,
+      bio,
+      phone,
+      jobTitle,
+      department,
+      location,
+    };
 
     if (req.file) {
       updateData.profilePicture = `uploads/profile/${req.file.filename}`;
@@ -59,8 +89,17 @@ const updateUser = async (req, res, next) => {
 // ✅ Update my own profile
 const updateMyProfile = async (req, res, next) => {
   try {
-    const { name, email, bio, phone, jobTitle, department, location } = req.body;
-    const updateData = { name, email, bio, phone, jobTitle, department, location };
+    const { name, email, bio, phone, jobTitle, department, location } =
+      req.body;
+    const updateData = {
+      name,
+      email,
+      bio,
+      phone,
+      jobTitle,
+      department,
+      location,
+    };
 
     if (req.file) {
       updateData.profilePicture = `uploads/profile/${req.file.filename}`;
@@ -100,7 +139,17 @@ const deleteUser = async (req, res, next) => {
 // ✅ Get logged-in user profile (/me)
 const getCurrentUser = async (req, res, next) => {
   try {
-    const user = await userModel.findById(req.user.id).select("-password");
+    const user = await userModel
+      .findById(req.user.id)
+      .select("-password")
+      .populate({
+        path: "notifications",
+        populate: [
+          { path: "project", select: "name status" },
+          { path: "task", select: "title status" },
+        ],
+        options: { sort: { createdAt: -1 } },
+      });
     if (!user) {
       const err = new Error("User not found");
       err.statusCode = 404;
@@ -118,5 +167,5 @@ module.exports = {
   updateUser,
   deleteUser,
   getCurrentUser,
-  updateMyProfile
+  updateMyProfile,
 };

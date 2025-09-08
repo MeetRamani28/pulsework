@@ -20,6 +20,7 @@ export interface AuthState {
   token: string | null;
   loading: boolean;
   error: string | null;
+  success: boolean;
 }
 
 const initialState: AuthState = {
@@ -27,9 +28,10 @@ const initialState: AuthState = {
   token: Cookies.get("token") || null,
   loading: false,
   error: null,
+  success: false,
 };
 
-// ✅ Login User
+// Login User
 export const loginUser = createAsyncThunk<
   { user: User; token: string },
   { email?: string; username?: string; password: string },
@@ -48,7 +50,7 @@ export const loginUser = createAsyncThunk<
   }
 });
 
-// ✅ Register User
+// Register User
 export const registerUser = createAsyncThunk<
   { message: string; user: User },
   { name: string; email: string; password: string; roles?: string },
@@ -67,7 +69,7 @@ export const registerUser = createAsyncThunk<
   }
 });
 
-// ✅ Get Current User
+// Get Current User
 export const getCurrentUser = createAsyncThunk<
   { user: User },
   void,
@@ -77,9 +79,7 @@ export const getCurrentUser = createAsyncThunk<
     const token = Cookies.get("token");
     const res = await axios.get(`${API_URL}/auth/me`, {
       withCredentials: true,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
   } catch (error: unknown) {
@@ -90,7 +90,7 @@ export const getCurrentUser = createAsyncThunk<
   }
 });
 
-// ✅ Logout User
+// Logout User
 export const logoutUser = createAsyncThunk<
   { message: string },
   void,
@@ -100,7 +100,7 @@ export const logoutUser = createAsyncThunk<
     const res = await axios.post(
       `${API_URL}/auth/logout`,
       {},
-      { withCredentials: true } // important to send cookies
+      { withCredentials: true }
     );
     return res.data;
   } catch (error: unknown) {
@@ -118,9 +118,12 @@ const authSlice = createSlice({
     clearAuthError: (state) => {
       state.error = null;
     },
+    clearAuthSuccess: (state) => {
+      state.success = false;
+    },
   },
   extraReducers: (builder) => {
-    // ✅ Login
+    // Login
     builder
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
@@ -140,21 +143,24 @@ const authSlice = createSlice({
         state.error = action.payload || "Login failed";
       });
 
-    // ✅ Register
+    // Register
     builder
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.success = false;
       })
       .addCase(registerUser.fulfilled, (state) => {
         state.loading = false;
+        state.success = true;
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Registration failed";
+        state.success = false;
       });
 
-    // ✅ Get Current User
+    // Get Current User
     builder
       .addCase(getCurrentUser.pending, (state) => {
         state.loading = true;
@@ -171,7 +177,7 @@ const authSlice = createSlice({
         state.error = action.payload || "Failed to fetch user";
       });
 
-    // ✅ Logout
+    // Logout
     builder
       .addCase(logoutUser.pending, (state) => {
         state.loading = true;
@@ -181,7 +187,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = null;
         state.token = null;
-        Cookies.remove("token"); // remove frontend cookie
+        Cookies.remove("token");
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
@@ -190,5 +196,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuthError } = authSlice.actions;
+export const { clearAuthError, clearAuthSuccess } = authSlice.actions;
 export default authSlice.reducer;
