@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useMemo, useEffect } from "react";
 import { Bell, Search, LogOut } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
@@ -41,7 +43,7 @@ const Header: React.FC = () => {
     if (!currentUser) dispatch(getCurrentUser());
   }, [dispatch, currentUser]);
 
-  // Manager notifications for completed tasks/projects
+  // ✅ Manager notifications for completed tasks/projects
   useEffect(() => {
     if (!currentUser || currentUser.roles?.toLowerCase() !== "manager") return;
 
@@ -53,7 +55,6 @@ const Header: React.FC = () => {
         type: "task",
         name: lastCompletedTask.title,
       });
-      dispatch(clearLastCompletedTask());
     }
 
     if (lastCompletedProject) {
@@ -68,16 +69,17 @@ const Header: React.FC = () => {
           type: "project",
           name: lastCompletedProject.name,
         });
-        dispatch(clearLastCompletedProject());
       }
     }
 
     if (newNotifications.length > 0) {
       setManagerNotifications((prev) => [...prev, ...newNotifications]);
+      dispatch(clearLastCompletedTask());
+      dispatch(clearLastCompletedProject());
     }
   }, [lastCompletedTask, lastCompletedProject, currentUser, dispatch]);
 
-  // Employee notifications for newly assigned tasks/projects
+  // ✅ Employee notifications for assigned tasks/projects
   useEffect(() => {
     if (!currentUser) return;
 
@@ -117,7 +119,6 @@ const Header: React.FC = () => {
           ...newTaskNotifications,
           ...newProjectNotifications,
         ];
-        // Remove duplicates
         return combined.filter(
           (v, i, a) => a.findIndex((t) => t.id === v.id) === i
         );
@@ -125,56 +126,115 @@ const Header: React.FC = () => {
     }
   }, [tasks, projects, currentUser]);
 
-  // Searchable items
+  const role = currentUser?.roles?.toLowerCase() || "employee";
+  // ✅ Searchable items
   const allItems: SearchItem[] = useMemo(() => {
     if (!currentUser) return [];
 
-    const userItems: SearchItem[] = [
-      { id: currentUser._id, type: "user", name: currentUser.name },
-    ];
+    let taskItems: SearchItem[] = [];
+    let projectItems: SearchItem[] = [];
+    let userItems: SearchItem[] = [];
 
-    const userProjectIds = projects
-      .filter((p) => {
-        const isManager =
-          typeof p.manager === "string"
-            ? p.manager === currentUser._id
-            : p.manager?._id === currentUser._id;
-        const isMember = p.members?.some((m) =>
+    if (role === "admin") {
+      // 🔹 Admin can see all
+      taskItems = tasks.map((t) => ({
+        id: t._id,
+        type: "task" as const,
+        name: t.title,
+      }));
+
+      projectItems = projects.map((p) => ({
+        id: p._id,
+        type: "project" as const,
+        name: p.name,
+      }));
+
+      userItems = [
+        ...projects
+          .flatMap((p) =>
+            p.members?.map((m: string | { _id: string; name: string }) =>
+              typeof m === "string"
+                ? null
+                : { id: m._id, type: "user" as const, name: m.name }
+            )
+          )
+          .filter(Boolean),
+        { id: currentUser._id, type: "user" as const, name: currentUser.name },
+      ] as SearchItem[];
+    } else if (role === "manager") {
+      // 🔹 Manager can see only projects where he is manager + tasks in those projects
+      const myProjects = projects.filter((p) =>
+        typeof p.manager === "string"
+          ? p.manager === currentUser._id
+          : p.manager?._id === currentUser._id
+      );
+
+      projectItems = myProjects.map((p) => ({
+        id: p._id,
+        type: "project" as const,
+        name: p.name,
+      }));
+
+      const myProjectIds = myProjects.map((p) => p._id);
+
+      taskItems = tasks
+        .filter((t) =>
+          typeof t.project === "string"
+            ? myProjectIds.includes(t.project)
+            : myProjectIds.includes(t.project?._id)
+        )
+        .map((t) => ({ id: t._id, type: "task" as const, name: t.title }));
+
+      userItems = [
+        { id: currentUser._id, type: "user" as const, name: currentUser.name },
+      ];
+    } else {
+      // 🔹 Employee → projects where he is member + tasks assigned to him
+      const myProjects = projects.filter((p) =>
+        p.members?.some((m) =>
           typeof m === "string"
             ? m === currentUser._id
             : m._id === currentUser._id
-        );
-        return isManager || isMember;
-      })
-      .map((p) => p._id);
+        )
+      );
 
-    type AssignedUser = string | { _id: string; name?: string };
-    const taskItems: SearchItem[] = tasks
-      .filter((t) => {
-        const belongsToUserProject =
-          typeof t.project === "string"
-            ? userProjectIds.includes(t.project)
-            : t.project?._id && userProjectIds.includes(t.project._id);
+      projectItems = myProjects.map((p) => ({
+        id: p._id,
+        type: "project" as const,
+        name: p.name,
+      }));
 
-        const assignedArray: AssignedUser[] = Array.isArray(t.assignedTo)
-          ? t.assignedTo
-          : [];
-        const isAssigned = assignedArray.some((a) =>
-          typeof a === "string"
-            ? a === currentUser._id
-            : a._id === currentUser._id
-        );
+      const myTasks = tasks.filter((t) => {
+        if (!t.assignedTo) return false;
+        return typeof t.assignedTo === "string"
+          ? t.assignedTo === currentUser._id
+          : t.assignedTo?._id === currentUser._id;
+      });
 
-        return belongsToUserProject || isAssigned;
-      })
-      .map((t) => ({ id: t._id, type: "task", name: t.title }));
+      taskItems = myTasks.map((t) => ({
+        id: t._id,
+        type: "task" as const,
+        name: t.title,
+      }));
 
-    const projectItems: SearchItem[] = projects
-      .filter((p) => userProjectIds.includes(p._id))
-      .map((p) => ({ id: p._id, type: "project", name: p.name }));
+      userItems = [
+        { id: currentUser._id, type: "user" as const, name: currentUser.name },
+      ];
+    }
 
-    return [...taskItems, ...projectItems, ...userItems];
-  }, [tasks, projects, currentUser]);
+    // remove duplicates
+    const unique = (arr: SearchItem[]) =>
+      arr.filter(
+        (v, i, a) =>
+          a.findIndex((t) => t.id === v.id && t.type === v.type) === i
+      );
+
+    return [
+      ...unique(taskItems),
+      ...unique(projectItems),
+      ...unique(userItems),
+    ];
+  }, [tasks, projects, currentUser, role]);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery) return [];
@@ -182,8 +242,6 @@ const Header: React.FC = () => {
       item.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [searchQuery, allItems]);
-
-  const role = currentUser?.roles?.toLowerCase() || "employee";
 
   const handleSelectItem = (item: SearchItem) => {
     setSearchQuery("");
@@ -212,7 +270,6 @@ const Header: React.FC = () => {
       }
       setManagerNotifications((prev) => prev.filter((n) => n.id !== item.id));
     } else {
-      // Employee notifications
       switch (item.type) {
         case "task":
           navigate(`/${role}/tasks`);
@@ -221,15 +278,15 @@ const Header: React.FC = () => {
           navigate(`/${role}/project`);
           break;
       }
-      // Save clicked notification to localStorage
       const readNotifications: string[] = JSON.parse(
         localStorage.getItem("readNotifications") || "[]"
       );
-      localStorage.setItem(
-        "readNotifications",
-        JSON.stringify([...readNotifications, item.id])
-      );
-
+      if (!readNotifications.includes(item.id)) {
+        localStorage.setItem(
+          "readNotifications",
+          JSON.stringify([...readNotifications, item.id])
+        );
+      }
       setEmployeeNotifications((prev) => prev.filter((n) => n.id !== item.id));
     }
     setShowNotifications(false);
@@ -238,6 +295,7 @@ const Header: React.FC = () => {
   const handleLogout = async () => {
     try {
       await dispatch(logoutUser()).unwrap();
+      localStorage.removeItem("readNotifications");
       navigate("/");
     } catch (err) {
       console.error("Logout failed", err);

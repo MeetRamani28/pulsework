@@ -44,7 +44,7 @@ const EmployeeWorkLogs: React.FC = () => {
     const timerWindow = window.open(
       `/employee/timer-popup`,
       "TimerPopup",
-      "width=400,height=350,resizable,scrollbars=no"
+      "width=450,height=450,resizable,scrollbars=no"
     );
 
     if (!timerWindow) toast.error("Please allow popups for this site.");
