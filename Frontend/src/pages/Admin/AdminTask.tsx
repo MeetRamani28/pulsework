@@ -12,7 +12,7 @@ import {
   clearTaskSuccess,
 } from "../../Reducers/TaskReducers";
 import type { Task } from "../../Reducers/TaskReducers";
-import { Loader2, Calendar, User, X, Tag } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { PlusCircle } from "../../Icons/DashboardIcons";
 import { getAllProjects } from "../../Reducers/ProjectReducers";
@@ -20,7 +20,10 @@ import { getAllUsers } from "../../Reducers/UserReducers";
 import { Delete } from "../../Icons/Delete";
 import { EditAnimatedSquare } from "../../Icons/EditAnimated";
 import toast from "react-hot-toast";
-import { CustomDropdown } from "../../components/atoms/CustomDropdown"; 
+import { CustomDropdown } from "../../components/atoms/CustomDropdown";
+import { User } from "../../Icons/User";
+import { Calendar1 } from "../../Icons/Calender1";
+import { ProjectIcon } from "../../Icons/SidebarIcon";
 
 interface TaskForm {
   title: string;
@@ -32,27 +35,32 @@ interface TaskForm {
   assignedTo: string;
 }
 
+const defaultForm: TaskForm = {
+  title: "",
+  description: "",
+  status: "todo",
+  priority: "medium",
+  deadline: "",
+  project: "",
+  assignedTo: "",
+};
+
 const AdminTasks: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { tasks, loading, error, success } = useSelector(
-    (state: RootState) => state.tasks
-  );
+  const {
+    tasks,
+    loading: tasksLoading,
+    error,
+    success,
+  } = useSelector((state: RootState) => state.tasks);
   const { projects } = useSelector((state: RootState) => state.projects);
   const { users } = useSelector((state: RootState) => state.users);
 
   const [showForm, setShowForm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
-
-  const [form, setForm] = useState<TaskForm>({
-    title: "",
-    description: "",
-    status: "todo",
-    priority: "medium",
-    deadline: "",
-    project: "",
-    assignedTo: "",
-  });
+  const [form, setForm] = useState<TaskForm>(defaultForm);
 
   // Fetch tasks, users, projects initially
   useEffect(() => {
@@ -61,31 +69,29 @@ const AdminTasks: React.FC = () => {
     dispatch(getAllUsers());
   }, [dispatch]);
 
-  // Handle success & error feedback
+  // Handle toast notifications
   useEffect(() => {
     if (error) {
       toast.error(error);
       dispatch(clearTaskError());
+      setIsDeleting(false);
     }
 
     if (success) {
-      toast.success(
-        editMode ? "Task updated successfully" : "Task created successfully"
-      );
+      if (isDeleting) {
+        toast.success("Task deleted successfully");
+        setIsDeleting(false);
+      } else {
+        toast.success(
+          editMode ? "Task updated successfully" : "Task created successfully"
+        );
+      }
       dispatch(clearTaskSuccess());
       setShowForm(false);
       setEditMode(false);
-      setForm({
-        title: "",
-        description: "",
-        status: "todo",
-        priority: "medium",
-        deadline: "",
-        project: "",
-        assignedTo: "",
-      });
+      setForm(defaultForm);
     }
-  }, [error, success, dispatch, editMode]);
+  }, [error, success, dispatch, editMode, isDeleting]);
 
   // Create or update task
   const handleSubmit = (e: React.FormEvent) => {
@@ -105,8 +111,8 @@ const AdminTasks: React.FC = () => {
   // Delete task
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to delete this task?")) {
+      setIsDeleting(true);
       dispatch(deleteTask(id));
-      toast.success("Task deleted successfully 🗑️");
     }
   };
 
@@ -116,7 +122,10 @@ const AdminTasks: React.FC = () => {
 
     const projectId =
       typeof task.project === "string" ? task.project : task.project?._id || "";
-    const assignedId = task.assignedTo?._id || "";
+    const assignedId =
+      typeof task.assignedTo === "string"
+        ? task.assignedTo
+        : task.assignedTo?._id || "";
 
     setForm({
       title: task.title,
@@ -141,15 +150,7 @@ const AdminTasks: React.FC = () => {
           onClick={() => {
             setShowForm(true);
             setEditMode(false);
-            setForm({
-              title: "",
-              description: "",
-              status: "todo",
-              priority: "medium",
-              deadline: "",
-              project: "",
-              assignedTo: "",
-            });
+            setForm(defaultForm);
           }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg shadow transition hover:bg-blue-100"
         >
@@ -158,14 +159,14 @@ const AdminTasks: React.FC = () => {
       </div>
 
       {/* Loading */}
-      {loading && (
+      {tasksLoading && (
         <div className="flex justify-center py-10">
           <Loader2 className="animate-spin text-blue-600" size={32} />
         </div>
       )}
 
       {/* Task Cards */}
-      {!loading && tasks.length > 0 && (
+      {!tasksLoading && tasks.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tasks.map((t: Task) => (
             <motion.div
@@ -185,7 +186,7 @@ const AdminTasks: React.FC = () => {
                 {/* Meta */}
                 <div className="flex flex-col gap-2 text-sm text-gray-500">
                   <div className="flex items-center gap-2">
-                    <Tag size={16} className="text-gray-400" />
+                    <ProjectIcon height={20} className="text-gray-400" />
                     <span>
                       {typeof t.project === "string"
                         ? projects.find((p) => p._id === t.project)?.name ||
@@ -194,11 +195,17 @@ const AdminTasks: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <User size={16} className="text-gray-400" />
+                    <User
+                      height={20}
+                      width={16}
+                      stroke="blue"
+                      className="text-gray-400"
+                    />
+
                     <span>{t.assignedTo?.name || "Unassigned"}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Calendar size={16} className="text-gray-400" />
+                    <Calendar1 height={20} className="text-gray-400" />
                     <span>
                       {t.deadline
                         ? new Date(t.deadline).toLocaleDateString()
@@ -247,7 +254,7 @@ const AdminTasks: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {!loading && tasks.length === 0 && (
+      {!tasksLoading && tasks.length === 0 && (
         <div className="text-center text-gray-500 italic py-10">
           No tasks found.
         </div>
@@ -310,10 +317,13 @@ const AdminTasks: React.FC = () => {
               </div>
 
               {/* Project */}
-               <div>
+              <div>
                 <label className="block text-sm text-gray-600">Project</label>
                 <CustomDropdown
-                  options={projects.map((p) => ({ label: p.name, value: p._id }))}
+                  options={projects.map((p) => ({
+                    label: p.name,
+                    value: p._id,
+                  }))}
                   selected={form.project}
                   onSelect={(value) => setForm({ ...form, project: value })}
                   placeholder="Select Project"
@@ -321,13 +331,17 @@ const AdminTasks: React.FC = () => {
               </div>
 
               {/* Assigned To */}
-               <div>
-                <label className="block text-sm text-gray-600">Assigned To</label>
+              <div>
+                <label className="block text-sm text-gray-600">
+                  Assigned To
+                </label>
                 <CustomDropdown
-                  options={users.map((u) => ({ label: u.name, value: u._id }))}
+                  options={users
+                    .filter((u) => u.roles === "employee") // only employees
+                    .map((u) => ({ label: u.name, value: u._id }))}
                   selected={form.assignedTo}
                   onSelect={(value) => setForm({ ...form, assignedTo: value })}
-                  placeholder="Select User"
+                  placeholder="Select Employee"
                 />
               </div>
 
@@ -361,7 +375,10 @@ const AdminTasks: React.FC = () => {
                   ]}
                   selected={form.priority}
                   onSelect={(value) =>
-                    setForm({ ...form, priority: value as "low" | "medium" | "high" })
+                    setForm({
+                      ...form,
+                      priority: value as "low" | "medium" | "high",
+                    })
                   }
                 />
               </div>
@@ -395,7 +412,7 @@ const AdminTasks: React.FC = () => {
                 onClick={handleSubmit}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
               >
-                {loading ? (
+                {tasksLoading ? (
                   <Loader2 className="animate-spin w-5 h-5" />
                 ) : editMode ? (
                   "Update"

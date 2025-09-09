@@ -7,7 +7,6 @@ import {
   DashboardIcon,
   ProjectIcon,
   TasksIcon,
-  CommentIcon,
   ProfileIcon,
 } from "../../Icons/SidebarIcon";
 import { Calendar1 } from "../../Icons/Calender1";
@@ -26,7 +25,6 @@ const menuItems: MenuItem[] = [
 
   // Admin only
   { name: "Users", path: "user", icon: ProfileIcon, roles: ["admin"] },
-  { name: "Comments", path: "comments", icon: CommentIcon, roles: ["admin"] },
 
   // Admin + Manager
   {

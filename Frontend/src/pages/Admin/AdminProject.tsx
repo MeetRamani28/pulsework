@@ -12,7 +12,7 @@ import {
   clearProjectSuccess,
 } from "../../Reducers/ProjectReducers";
 import type { Project } from "../../Reducers/ProjectReducers";
-import { Loader2, Calendar, User, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { PlusCircle } from "../../Icons/DashboardIcons";
 import { getAllUsers } from "../../Reducers/UserReducers";
@@ -20,6 +20,8 @@ import { Delete } from "../../Icons/Delete";
 import { EditAnimatedSquare } from "../../Icons/EditAnimated";
 import toast from "react-hot-toast";
 import { CustomDropdown } from "../../components/atoms/CustomDropdown";
+import { Calendar1 } from "../../Icons/Calender1";
+import { User } from "../../Icons/User";
 
 interface ProjectForm {
   name: string;
@@ -86,7 +88,7 @@ const AdminProject: React.FC = () => {
       });
     }
     if (success && deleteId) {
-      toast.success("Project deleted successfully 🗑️");
+      toast.success("Project deleted successfully");
       dispatch(clearProjectSuccess());
       setDeleteId(null);
     }
@@ -186,9 +188,9 @@ const AdminProject: React.FC = () => {
               </p>
 
               {/* Meta */}
-              <div className="flex flex-col gap-2 text-sm text-gray-500 mb-4">
-                <div className="flex items-center gap-2">
-                  <User size={16} className="text-gray-400" />
+              <div className="flex flex-col text-sm text-gray-500 mb-4">
+                <div className="flex items-center">
+                  <User height={20} width={16} stroke="blue" className="text-gray-400" />
                   <span>
                     {typeof p.manager === "string"
                       ? users.find((u) => u._id === p.manager)?.name ||
@@ -197,7 +199,7 @@ const AdminProject: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar size={16} className="text-gray-400" />
+                  <Calendar1 height={20} className="text-gray-400" />
                   <span>
                     {p.deadline
                       ? new Date(p.deadline).toLocaleDateString()

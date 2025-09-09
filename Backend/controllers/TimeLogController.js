@@ -314,6 +314,67 @@ const getDailySummary = async (req, res, next) => {
   }
 };
 
+// -------------------- Get all daily summaries --------------------
+const getAllSummaries = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    // fetch logs of this user
+    const logs = await TaskLog.find({ user: userId });
+
+    // Map of date -> { seconds, taskIds }
+    const summaries = {};
+
+    logs.forEach((log) => {
+      log.sessions.forEach((s) => {
+        const sessionStart = new Date(s.startedAt);
+        const sessionEnd = s.endedAt ? new Date(s.endedAt) : new Date();
+
+        // iterate through days between start and end
+        let current = new Date(sessionStart);
+        while (current <= sessionEnd) {
+          const dayKey = current.toISOString().split("T")[0];
+          if (!summaries[dayKey]) {
+            summaries[dayKey] = { seconds: 0, tasks: new Set() };
+          }
+
+          // Clip inside day
+          const startOfDay = new Date(dayKey);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(dayKey);
+          endOfDay.setHours(23, 59, 59, 999);
+
+          const start = sessionStart < startOfDay ? startOfDay : sessionStart;
+          const end = sessionEnd > endOfDay ? endOfDay : sessionEnd;
+
+          summaries[dayKey].seconds += (end - start) / 1000;
+          summaries[dayKey].tasks.add(log.task.toString());
+
+          // move to next day
+          current.setDate(current.getDate() + 1);
+          current.setHours(0, 0, 0, 0);
+        }
+      });
+    });
+
+    const result = Object.entries(summaries).map(([date, data]) => {
+      const hours = Math.floor(data.seconds / 3600);
+      const minutes = Math.floor((data.seconds % 3600) / 60);
+      return {
+        date,
+        totalHours: parseFloat((data.seconds / 3600).toFixed(2)),
+        formatted: `${hours}h ${minutes}m`,
+        taskCount: data.tasks.size,
+      };
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 module.exports = {
   startLog,
   pauseLog,
@@ -325,4 +386,5 @@ module.exports = {
   deleteLog,
   getAllLogs,
   getDailySummary,
+  getAllSummaries
 };

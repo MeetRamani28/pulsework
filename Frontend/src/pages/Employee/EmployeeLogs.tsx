@@ -4,7 +4,7 @@ import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../store/store";
 import {
-  getDailySummary,
+  getAllSummaries,
   clearTimeLogError,
   clearTimeLogSuccess,
 } from "../../Reducers/TimeLogsReducers";
@@ -18,13 +18,12 @@ import { Play } from "lucide-react";
 
 const EmployeeWorkLogs: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { error, success, currentLog, summary } = useSelector(
+  const { error, success, currentLog, summaries } = useSelector(
     (state: RootState) => state.workLogs
   );
 
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0]; // yyyy-mm-dd
-    dispatch(getDailySummary(today));
+    dispatch(getAllSummaries());
     dispatch(getAllTasks());
   }, [dispatch]);
 
@@ -34,7 +33,7 @@ const EmployeeWorkLogs: React.FC = () => {
       dispatch(clearTimeLogError());
     }
     if (success) {
-      toast.success("Action successful ✅");
+      toast.success("Action successful");
       dispatch(clearTimeLogSuccess());
     }
   }, [error, success, dispatch]);
@@ -60,18 +59,16 @@ const EmployeeWorkLogs: React.FC = () => {
   };
 
   // Use summary from backend, fallback to totalHours in seconds if needed
-  const calendarEvents = summary
-    ? [
-        {
-          id: "daily-summary",
-          title: `Total Hours: ${
-            summary.formatted || formatHHMM(summary.totalHours * 3600)
-          }\nTotal Tasks: ${summary.taskCount}`,
-          start: summary.date,
-          allDay: true,
-          color: "#3b82f6",
-        },
-      ]
+  const calendarEvents = summaries
+    ? summaries.map((s) => ({
+        id: s.date,
+        title: `Hours: ${
+          s.formatted || formatHHMM(s.totalHours * 3600)
+        }\nTasks: ${s.taskCount}`,
+        start: s.date,
+        allDay: true,
+        color: "#3b82f6",
+      }))
     : [];
 
   return (

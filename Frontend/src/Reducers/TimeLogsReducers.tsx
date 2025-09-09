@@ -44,6 +44,7 @@ interface TimeLogState {
   error: string | null;
   success: boolean;
   summary: DailySummary | null;
+  summaries: DailySummary[];
 }
 
 const initialState: TimeLogState = {
@@ -53,6 +54,7 @@ const initialState: TimeLogState = {
   error: null,
   success: false,
   summary: null,
+  summaries: [],
 };
 
 // ================== Helper ==================
@@ -262,6 +264,24 @@ export const getDailySummary = createAsyncThunk<
   }
 });
 
+export const getAllSummaries = createAsyncThunk<
+  DailySummary[],
+  void,
+  { rejectValue: string }
+>("timelog/getAllSummaries", async (_, { rejectWithValue }) => {
+  try {
+    const res = await axios.get(`${API_URL}/timelogs/summaries`, {
+      headers: getAuthHeaders(),
+    });
+    return res.data as DailySummary[];
+  } catch (err) {
+    const error = err as AxiosError<{ message: string }>;
+    return rejectWithValue(
+      error.response?.data?.message || "Failed to fetch summaries"
+    );
+  }
+});
+
 // ================== Slice ==================
 const timeLogSlice = createSlice({
   name: "timelog",
@@ -416,6 +436,24 @@ const timeLogSlice = createSlice({
         state.summary = action.payload; // { date, totalHours, formatted, taskCount }
       })
       .addCase(getDailySummary.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || null;
+      });
+
+    // All Summaries
+    builder
+      .addCase(getAllSummaries.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(
+        getAllSummaries.fulfilled,
+        (state, action: PayloadAction<DailySummary[]>) => {
+          state.loading = false;
+          state.summaries = action.payload;
+        }
+      )
+      .addCase(getAllSummaries.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || null;
       });

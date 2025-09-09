@@ -8,7 +8,6 @@ import {
   deleteProject,
   updateProject,
   clearProjectError,
-  clearProjectSuccess,
   type Project,
 } from "../../Reducers/ProjectReducers";
 import { getAllUsers } from "../../Reducers/UserReducers";
@@ -32,10 +31,10 @@ interface ProjectForm {
 
 const MasterProjects: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { projects, loading, error, success } = useSelector(
+  const { projects, loading, error } = useSelector(
     (state: RootState) => state.projects
   );
-  const { users } = useSelector((state: RootState) => state.users);
+  const { users, currentUser } = useSelector((state: RootState) => state.users);
 
   // const availableManagers = users.filter((u) => u.roles === "manager");
   const availableEmployees = users.filter((u) => u.roles === "employee");
@@ -43,8 +42,6 @@ const MasterProjects: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
-  const { currentUser } = useSelector((state: RootState) => state.users);
-
   const [form, setForm] = useState<ProjectForm>({
     name: "",
     description: "",
@@ -60,29 +57,13 @@ const MasterProjects: React.FC = () => {
     dispatch(getAllUsers());
   }, [dispatch]);
 
-  // Handle success & error feedback
+  // Handle error feedback
   useEffect(() => {
     if (error) {
       toast.error(error);
       dispatch(clearProjectError());
     }
-    if (success) {
-      toast.success(
-        editMode ? "Project updated successfully" : "Action completed!"
-      );
-      dispatch(clearProjectSuccess());
-      setShowForm(false);
-      setEditMode(false);
-      setForm({
-        name: "",
-        description: "",
-        manager: "",
-        members: [],
-        status: "in-progress",
-        deadline: "",
-      });
-    }
-  }, [error, success, dispatch, editMode]);
+  }, [error, dispatch]);
 
   // Edit project
   const handleEdit = (project: Project) => {
@@ -106,8 +87,10 @@ const MasterProjects: React.FC = () => {
   // Delete project
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to delete this project?")) {
-      dispatch(deleteProject(id));
-      toast.success("Project deleted successfully 🗑️");
+      dispatch(deleteProject(id))
+        .unwrap()
+        .then(() => toast.success("Project deleted successfully 🗑️"))
+        .catch((err: string) => toast.error(err));
     }
   };
 
@@ -116,9 +99,24 @@ const MasterProjects: React.FC = () => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Project name is required!");
     if (editMode && currentId) {
-      dispatch(updateProject({ id: currentId, updates: form })).then(() => {
-        dispatch(getAllProjects());
-      });
+      dispatch(updateProject({ id: currentId, updates: form }))
+        .unwrap()
+        .then(() => {
+          toast.success("Project updated successfully!");
+          dispatch(getAllProjects());
+          setShowForm(false);
+          setEditMode(false);
+          setCurrentId(null);
+          setForm({
+            name: "",
+            description: "",
+            manager: "",
+            members: [],
+            status: "in-progress",
+            deadline: "",
+          });
+        })
+        .catch((err: string) => toast.error(err));
     }
   };
 

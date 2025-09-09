@@ -4,7 +4,6 @@ import projectReducer from "../Reducers/ProjectReducers.tsx";
 import taskReducer from "../Reducers/TaskReducers.tsx";
 import TimeLogReducer from "../Reducers/TimeLogsReducers.tsx";
 import userReducer from "../Reducers/UserReducers.tsx";
-import commentReducer from "../Reducers/CommentReducers.tsx";
 import NotificationReducer from "../Reducers/NotificationReducers.tsx";
 
 export const store = configureStore({
@@ -13,7 +12,6 @@ export const store = configureStore({
     tasks: taskReducer,
     projects: projectReducer,
     workLogs: TimeLogReducer,
-    comments: commentReducer,
     users: userReducer,
     notifications: NotificationReducer,
   },

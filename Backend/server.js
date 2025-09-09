@@ -14,7 +14,6 @@ const userRoutes = require("./routes/UserRoutes");
 const projectRoutes = require("./routes/ProjectRoutes");
 const taskRoutes = require("./routes/TaskRoutes");
 const timeLogRoutes = require("./routes/TimeLogRoutes");
-const commentRoutes = require("./routes/CommentRoutes");
 const notificationRoutes = require("./routes/NotificationRoutes");
 
 app.use(
@@ -48,7 +47,6 @@ app.use("/users", userRoutes);
 app.use("/projects", projectRoutes);
 app.use("/tasks", taskRoutes);
 app.use("/timelogs", timeLogRoutes);
-app.use("/comments", commentRoutes);
 app.use("/notifications", notificationRoutes);
 
 app.get("/", (req, res) => {

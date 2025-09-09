@@ -49,7 +49,7 @@ const getUserById = async (req, res, next) => {
 // ✅ Update user profile (self or admin/manager)
 const updateUser = async (req, res, next) => {
   try {
-    const { name, email, roles, bio, phone, jobTitle, department, location } =
+    const { name, email, roles, bio, phone, jobTitle, department, location, password } =
       req.body;
     const updateData = {
       name,
@@ -68,6 +68,11 @@ const updateUser = async (req, res, next) => {
     // Only admin can update roles
     if (roles && req.user.roles === "admin") {
       updateData.roles = roles;
+    }
+
+    if (password && password.trim() !== "") {
+      const { hashPass } = require("../utils/EncryptPass");
+      updateData.password = await hashPass(password);
     }
 
     const updatedUser = await userModel

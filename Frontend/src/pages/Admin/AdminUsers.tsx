@@ -21,6 +21,7 @@ import { Delete } from "../../Icons/Delete";
 interface UserForm {
   name: string;
   email: string;
+  password: string;
   roles: string;
   bio: string;
   phone: string;
@@ -42,6 +43,7 @@ const AdminUsers: React.FC = () => {
   const [form, setForm] = useState<UserForm>({
     name: "",
     email: "",
+    password: "",
     roles: "employee",
     bio: "",
     phone: "",
@@ -64,6 +66,7 @@ const AdminUsers: React.FC = () => {
     setForm({
       name: "",
       email: "",
+      password: "",
       roles: "employee",
       bio: "",
       phone: "",
@@ -78,18 +81,24 @@ const AdminUsers: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!form.name.trim() || !form.email.trim() || !form.roles.trim()) {
       return toast.error("Name, Email & Role are required!");
     }
 
     try {
       setFormSubmitting(true);
+      const formData = new FormData();
+
+      Object.entries(form).forEach(([key, value]) => {
+        // Only append password if not blank
+        if (value !== null && value !== undefined && value !== "") {
+          if (key === "password" && value === "") return;
+          formData.append(key, value as string | Blob);
+        }
+      });
+
       if (editMode && currentId) {
-        const formData = new FormData();
-        Object.entries(form).forEach(([key, value]) => {
-          if (value !== null && value !== undefined)
-            formData.append(key, value as string | Blob);
-        });
         await dispatch(updateUser({ id: currentId, formData })).unwrap();
         toast.success("User updated successfully");
       } else {
@@ -97,12 +106,13 @@ const AdminUsers: React.FC = () => {
           registerUser({
             name: form.name,
             email: form.email,
-            password: "defaultPassword123",
+            password: form.password,
             roles: form.roles,
           })
         ).unwrap();
         toast.success("User registered successfully");
       }
+
       resetForm();
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -136,6 +146,7 @@ const AdminUsers: React.FC = () => {
     setForm({
       name: user.name || "",
       email: user.email || "",
+      password: "",
       roles: user.roles || "employee",
       bio: user.bio || "",
       phone: user.phone || "",
@@ -277,6 +288,22 @@ const AdminUsers: React.FC = () => {
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600">Password</label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
+                  className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required={!editMode}
+                  placeholder={
+                    editMode ? "Leave blank to keep current password" : ""
+                  }
                 />
               </div>
 

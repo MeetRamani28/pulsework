@@ -13,8 +13,8 @@ import {
 } from "recharts";
 import { useSelector, useDispatch } from "react-redux";
 import type { RootState, AppDispatch } from "../../store/store";
-import { Bell, Users, BarChart, PlusCircle } from "../../Icons/DashboardIcons";
-import { CommentIcon, ProjectIcon, TasksIcon } from "../../Icons/SidebarIcon";
+import { Users, BarChart, PlusCircle } from "../../Icons/DashboardIcons";
+import { ProjectIcon, TasksIcon } from "../../Icons/SidebarIcon";
 import { useNavigate } from "react-router-dom";
 import {
   format,
@@ -31,8 +31,8 @@ import {
 import { getAllProjects } from "../../Reducers/ProjectReducers";
 import { getAllTasks } from "../../Reducers/TaskReducers";
 import { getAllUsers } from "../../Reducers/UserReducers";
-import { getAllComments } from "../../Reducers/CommentReducers";
 import { getCurrentUser } from "../../Reducers/UserReducers";
+import { User } from "../../Icons/User";
 
 // Interfaces for chart data
 interface TaskChartData {
@@ -76,22 +76,17 @@ const AdminDashboard: React.FC = () => {
   const { users, loading: userLoading } = useSelector(
     (state: RootState) => state.users
   );
-  const { comments, loading: commentLoading } = useSelector(
-    (state: RootState) => state.comments
-  );
 
   useEffect(() => {
     dispatch(getAllProjects());
     dispatch(getAllTasks());
     dispatch(getAllUsers());
-    dispatch(getAllComments());
     dispatch(getCurrentUser());
   }, [dispatch]);
 
   const projectCount = projects?.length || 0;
   const taskCount = tasks?.length || 0;
   const userCount = users?.length || 0;
-  const alertCount = comments?.length || 0;
 
   // Weekly Tasks (last 7 days)
   const weeklyTasksData: TaskChartData[] = useMemo(() => {
@@ -175,7 +170,7 @@ const AdminDashboard: React.FC = () => {
     });
   }, [projects]);
 
-  if (projectLoading || taskLoading || userLoading || commentLoading) {
+  if (projectLoading || taskLoading || userLoading) {
     return (
       <div className="w-full min-h-screen flex items-center justify-center text-lg">
         Loading dashboard data...
@@ -187,7 +182,6 @@ const AdminDashboard: React.FC = () => {
     { title: "Projects", value: projectCount, icon: <ProjectIcon /> },
     { title: "Tasks", value: taskCount, icon: <BarChart /> },
     { title: "Users", value: userCount, icon: <Users /> },
-    { title: "Alerts", value: alertCount, icon: <Bell /> },
   ];
 
   return (
@@ -207,7 +201,7 @@ const AdminDashboard: React.FC = () => {
       </motion.div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {summaryCards.map((card, i) => (
           <motion.div
             key={i}
@@ -414,6 +408,91 @@ const AdminDashboard: React.FC = () => {
         </div>
       </motion.div>
 
+      {/* In-Progress Projects Table */}
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={fadeInUp}
+        custom={11}
+        className="p-6 rounded-2xl shadow-md bg-white mt-6"
+      >
+        <h2 className="text-xl font-bold mb-4 text-gray-700 flex items-center gap-2">
+          <ProjectIcon className="w-6 h-6 text-blue-600" strokeWidth={2} />
+          In-Progress Projects
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full border border-gray-200 rounded-lg divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-gray-700 font-semibold uppercase tracking-wider">
+                  Project
+                </th>
+                <th className="px-4 py-3 text-left text-gray-700 font-semibold uppercase tracking-wider">
+                  Manager
+                </th>
+                <th className="px-4 py-3 text-left text-gray-700 font-semibold uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-gray-700 font-semibold uppercase tracking-wider">
+                  Deadline
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {projects.filter((p) => p.status === "in-progress").length > 0 ? (
+                projects
+                  .filter((p) => p.status === "in-progress")
+                  .slice(0, 5) // Show only top 5
+                  .map((project, index) => (
+                    <tr
+                      key={project._id}
+                      className={`transition hover:bg-blue-50 ${
+                        index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                      }`}
+                    >
+                      <td className="px-4 py-3 text-gray-800 font-medium">
+                        {project.name}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {typeof project.manager === "object" &&
+                        "name" in project.manager
+                          ? project.manager.name
+                          : "N/A"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-1 rounded-full text-white text-sm font-semibold bg-yellow-500">
+                          In Progress
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {project.deadline
+                          ? new Date(project.deadline).toLocaleDateString()
+                          : "N/A"}
+                      </td>
+                    </tr>
+                  ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="px-4 py-6 text-center text-gray-400"
+                  >
+                    No in-progress projects
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <button
+          onClick={() => navigate("/admin/project")}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow hover:bg-blue-700 transition"
+        >
+          View All Projects
+        </button>
+      </motion.div>
+
       {/* Quick Actions */}
       <motion.div
         initial="hidden"
@@ -444,64 +523,13 @@ const AdminDashboard: React.FC = () => {
           </button>
 
           <button
-            onClick={() => navigate("/admin/comments")}
-            className="flex items-center gap-3 px-6 py-3 bg-yellow-50 text-yellow-700 rounded-xl shadow-md hover:bg-yellow-100 hover:scale-105 transition-transform duration-300"
+            onClick={() => navigate("/admin/user")}
+            className="flex items-center gap-3 px-6 py-3 bg-blue-50 text-blue-700 rounded-xl shadow-md hover:bg-blue-100 hover:scale-105 transition-transform duration-300"
           >
-            <CommentIcon width={22} height={22} stroke="#f59e0b" />
-            <span className="font-medium">Add Comment</span>
+            <User width={22} height={22} stroke="blue" />
+            <span className="font-medium">Add User</span>
           </button>
         </div>
-      </motion.div>
-
-      {/* Latest Comments */}
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={fadeInUp}
-        custom={11}
-        className="p-6 rounded-2xl shadow-md bg-white flex flex-col gap-4"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-100 text-blue-600">
-            <CommentIcon width={24} height={24} stroke="#2563eb" />
-          </div>
-          <h2 className="text-lg font-bold text-blue-700">Latest Comments</h2>
-        </div>
-
-        <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-          {comments && comments.length > 0 ? (
-            comments
-              .slice(-2)
-              .reverse()
-              .map((comment) => (
-                <div
-                  key={comment._id}
-                  className="p-3 rounded-lg bg-gray-50 border border-gray-200"
-                >
-                  <p className="text-gray-800 text-sm">{comment.content}</p>
-                  <div className="flex justify-between mt-2 text-xs text-gray-500">
-                    <span>By: {comment.user?.name || "Unknown"}</span>
-                    <span>
-                      {new Date(comment.createdAt).toLocaleDateString()}{" "}
-                      {new Date(comment.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                </div>
-              ))
-          ) : (
-            <p className="text-gray-500 italic">No comments available</p>
-          )}
-        </div>
-
-        <button
-          onClick={() => navigate("/admin/comments")}
-          className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow hover:bg-blue-700 transition"
-        >
-          View All Comments
-        </button>
       </motion.div>
     </div>
   );

@@ -8,9 +8,10 @@ import {
   deleteLog,
   clearTimeLogError,
   clearTimeLogSuccess,
+  type TimeLog,
 } from "../../Reducers/TimeLogsReducers";
-import type { TimeLog } from "../../Reducers/TimeLogsReducers";
 import { getAllProjects } from "../../Reducers/ProjectReducers";
+import { getAllTasks } from "../../Reducers/TaskReducers";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Delete } from "../../Icons/Delete";
@@ -25,12 +26,14 @@ const ManagerTimeLogs: React.FC = () => {
     (state: RootState) => state.workLogs
   );
   const { projects } = useSelector((state: RootState) => state.projects);
+  const { tasks } = useSelector((state: RootState) => state.tasks);
   const { currentUser } = useSelector((state: RootState) => state.users);
 
   // Fetch all logs and projects
   useEffect(() => {
     dispatch(getAllLogs());
     dispatch(getAllProjects());
+    dispatch(getAllTasks());
   }, [dispatch]);
 
   // Handle error & success
@@ -55,6 +58,7 @@ const ManagerTimeLogs: React.FC = () => {
 
   // Filter logs relevant to the manager
   const managerLogs = logs.filter((log: TimeLog) => {
+    // Find associated project
     const project = projects.find(
       (p) =>
         p._id ===
@@ -67,7 +71,20 @@ const ManagerTimeLogs: React.FC = () => {
         ? project.manager
         : project.manager?._id;
 
-    return log.user._id === currentUser?._id || managerId === currentUser?._id;
+    // Find associated task
+    const task = tasks.find(
+      (t) => t._id === (typeof log.task === "string" ? log.task : log.task?._id)
+    );
+
+    const taskProjectId =
+      task &&
+      (typeof task.project === "string" ? task.project : task.project?._id);
+
+    return (
+      log.user._id === currentUser?._id || // logs created by manager
+      managerId === currentUser?._id || // logs for projects managed by manager
+      taskProjectId === project?._id // logs where task belongs to manager's project
+    );
   });
 
   return (
@@ -92,7 +109,12 @@ const ManagerTimeLogs: React.FC = () => {
               className="bg-white rounded-2xl shadow-md p-6 border hover:shadow-lg transition"
             >
               <h2 className="text-lg font-bold text-blue-600 mb-2">
-                {log.task.title}
+                {(() => {
+                  const taskId =
+                    typeof log.task === "string" ? log.task : log.task?._id;
+                  const task = tasks.find((t) => t._id === taskId);
+                  return task?.title || "No Task Assigned";
+                })()}
               </h2>
 
               <div className="flex flex-col gap-2 text-sm text-gray-500 mb-4">

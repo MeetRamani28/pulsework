@@ -9,11 +9,10 @@ import {
   createTask,
   updateTask,
   clearTaskError,
-  clearTaskSuccess,
+  type Task,
 } from "../../Reducers/TaskReducers";
 import { getAllProjects } from "../../Reducers/ProjectReducers";
 import { getAllUsers } from "../../Reducers/UserReducers";
-import type { Task } from "../../Reducers/TaskReducers";
 import { Loader2, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { PlusCircle, Users } from "../../Icons/DashboardIcons";
@@ -36,7 +35,7 @@ interface TaskForm {
 
 const ManagerTasks: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { tasks, loading, error, success } = useSelector(
+  const { tasks, loading, error } = useSelector(
     (state: RootState) => state.tasks
   );
   const { projects } = useSelector((state: RootState) => state.projects);
@@ -62,31 +61,13 @@ const ManagerTasks: React.FC = () => {
     dispatch(getAllUsers());
   }, [dispatch]);
 
-  // Handle success & error feedback
+  // Handle error feedback
   useEffect(() => {
     if (error) {
       toast.error(error);
       dispatch(clearTaskError());
     }
-
-    if (success) {
-      toast.success(
-        editMode ? "Task updated successfully" : "Task created successfully"
-      );
-      dispatch(clearTaskSuccess());
-      setShowForm(false);
-      setEditMode(false);
-      setForm({
-        title: "",
-        description: "",
-        status: "todo",
-        priority: "medium",
-        deadline: "",
-        project: "",
-        assignedTo: "",
-      });
-    }
-  }, [error, success, dispatch, editMode]);
+  }, [error, dispatch]);
 
   // Create or update task
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,30 +78,42 @@ const ManagerTasks: React.FC = () => {
       return toast.error("Please assign the task to a user!");
 
     if (editMode && currentId) {
-      dispatch(updateTask({ id: currentId, updates: form })).then(() => {
-        dispatch(getAllTasks());
-      });
+      dispatch(updateTask({ id: currentId, updates: form }))
+        .unwrap()
+        .then(() => {
+          toast.success("Task updated successfully");
+          dispatch(getAllTasks());
+          resetForm();
+        })
+        .catch((err: string) => toast.error(err));
     } else {
-      dispatch(createTask(form)).then(() => {
-        dispatch(getAllTasks());
-      });
+      dispatch(createTask(form))
+        .unwrap()
+        .then(() => {
+          toast.success("Task created successfully");
+          dispatch(getAllTasks());
+          resetForm();
+        })
+        .catch((err: string) => toast.error(err));
     }
   };
 
   // Delete task
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to delete this task?")) {
-      dispatch(deleteTask(id)).then(() => {
-        dispatch(getAllTasks());
-        toast.success("Task deleted successfully 🗑️");
-      });
+      dispatch(deleteTask(id))
+        .unwrap()
+        .then(() => {
+          toast.success("Task deleted successfully");
+          dispatch(getAllTasks());
+        })
+        .catch((err: string) => toast.error(err));
     }
   };
 
   // Edit task
   const handleEdit = (task: Task) => {
     setCurrentId(task._id);
-
     const projectId =
       typeof task.project === "string" ? task.project : task.project?._id || "";
     const assignedId = task.assignedTo?._id || "";
@@ -137,6 +130,22 @@ const ManagerTasks: React.FC = () => {
 
     setEditMode(true);
     setShowForm(true);
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setShowForm(false);
+    setEditMode(false);
+    setCurrentId(null);
+    setForm({
+      title: "",
+      description: "",
+      status: "todo",
+      priority: "medium",
+      deadline: "",
+      project: "",
+      assignedTo: "",
+    });
   };
 
   // Filter tasks relevant to manager
@@ -162,19 +171,7 @@ const ManagerTasks: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-blue-600">Manager Tasks</h1>
         <button
-          onClick={() => {
-            setShowForm(true);
-            setEditMode(false);
-            setForm({
-              title: "",
-              description: "",
-              status: "todo",
-              priority: "medium",
-              deadline: "",
-              project: "",
-              assignedTo: "",
-            });
-          }}
+          onClick={() => setShowForm(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg shadow transition hover:bg-blue-100"
         >
           <PlusCircle stroke="#2563eb" height={20} /> Add Task
@@ -297,7 +294,7 @@ const ManagerTasks: React.FC = () => {
           >
             {/* Modal Header & Close button */}
             <button
-              onClick={() => setShowForm(false)}
+              onClick={resetForm}
               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition"
             >
               <X size={20} />
@@ -357,10 +354,12 @@ const ManagerTasks: React.FC = () => {
                   Assigned To
                 </label>
                 <CustomDropdown
-                  options={users.map((u) => ({ label: u.name, value: u._id }))}
+                  options={users
+                    .filter((u) => u.roles === "employee") // only employees
+                    .map((u) => ({ label: u.name, value: u._id }))}
                   selected={form.assignedTo}
                   onSelect={(value) => setForm({ ...form, assignedTo: value })}
-                  placeholder="Select User"
+                  placeholder="Select Employee"
                 />
               </div>
 
@@ -420,7 +419,7 @@ const ManagerTasks: React.FC = () => {
             <div className="px-6 py-4 border-t flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={resetForm}
                 className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
               >
                 Cancel

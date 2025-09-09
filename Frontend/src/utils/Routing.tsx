@@ -16,7 +16,6 @@ import AdminProject from "../pages/Admin/AdminProject";
 import AdminTask from "../pages/Admin/AdminTask";
 import AdminWorkLogs from "../pages/Admin/AdminWorkLogs";
 import AdminProfile from "../pages/Admin/AdminProfile";
-import AdminComments from "../pages/Admin/AdminPComments";
 import AdminUsers from "../pages/Admin/AdminUsers";
 import ManagerProjects from "../pages/Manager/MangerProjects";
 import ManagerTasks from "../pages/Manager/ManagerTasks";
@@ -85,7 +84,6 @@ const Routing: React.FC = () => {
         <Route path="tasks" element={<AdminTask />} />
         <Route path="user" element={<AdminUsers />} />
         <Route path="work-logs" element={<AdminWorkLogs />} />
-        <Route path="comments" element={<AdminComments />} />
         <Route path="profile" element={<AdminProfile />} />
       </Route>
 

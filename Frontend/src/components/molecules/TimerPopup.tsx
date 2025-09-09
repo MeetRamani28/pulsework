@@ -54,7 +54,7 @@ const TimerPopup: React.FC = () => {
   useEffect(() => {
     if (currentLog?.status === "stopped") {
       setSeconds(0);
-      toast.success("Timer stopped ✅");
+      toast.success("Timer stopped");
       window.close();
     }
   }, [currentLog?.status]);
@@ -74,32 +74,32 @@ const TimerPopup: React.FC = () => {
     if (!hasStartedRef.current) {
       setSeconds(0);
       dispatch(startLog(selectedTask));
-      toast.success("Timer started ✅");
+      toast.success("Timer started");
       hasStartedRef.current = true;
     }
   };
 
   const handlePause = () => {
-    if (!currentLog) return;
+    if (!currentLog?._id || currentLog.status !== "running") return;
     dispatch(pauseLog(currentLog._id));
     toast("Paused ⏸️");
   };
 
   const handleResume = () => {
-    if (!currentLog) return;
+    if (!currentLog?._id || currentLog.status !== "paused") return;
     dispatch(resumeLog(currentLog._id));
-    toast("Resumed ▶️");
+    toast("Resumed");
   };
 
   const handleStop = () => {
-    if (!currentLog) return;
+    if (!currentLog?._id || currentLog.status === "stopped") return;
     dispatch(stopLog(currentLog._id));
     setSeconds(0);
-    toast.success("Stopped ✅");
+    toast.success("Stopped");
   };
 
   const handleCancel = () => {
-    toast("Closed without stopping ⏹️");
+    toast("Closed without stopping");
     window.close();
   };
 
@@ -215,7 +215,7 @@ const TimerPopup: React.FC = () => {
                 Resume
               </motion.button>
             )}
-            {currentLog && (
+            {currentLog && currentLog.status !== "stopped" && (
               <motion.button
                 onClick={handleStop}
                 className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold shadow-lg"

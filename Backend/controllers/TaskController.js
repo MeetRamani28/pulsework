@@ -53,6 +53,11 @@ const createTask = async (req, res, next) => {
       await User.findByIdAndUpdate(assignedTo, {
         $push: { notifications: notif._id },
       });
+
+      if (!projectExists.members.includes(assignedTo)) {
+        projectExists.members.push(assignedTo);
+        await projectExists.save();
+      }
     }
 
     res.status(201).json({ message: "Task created successfully", task });
@@ -139,6 +144,7 @@ const updateTask = async (req, res, next) => {
     }
 
     const wasCompleted = task.status === "completed";
+    const oldAssignedTo = task.assignedTo?.toString();
 
     // Update the task
     Object.assign(task, req.body);
@@ -160,6 +166,29 @@ const updateTask = async (req, res, next) => {
           $push: { notifications: notif._id },
         });
       }
+    }
+
+    // 🔹 If assignedTo changed or newly assigned → add to project members & send notification
+    if (req.body.assignedTo && req.body.assignedTo !== oldAssignedTo) {
+      const project = await Project.findById(task.project);
+      const assignedUserId = req.body.assignedTo;
+
+      if (!project.members.includes(assignedUserId)) {
+        project.members.push(assignedUserId);
+        await project.save();
+      }
+
+      const notif = await Notification.create({
+        user: assignedUserId,
+        task: task._id,
+        project: project._id,
+        event: "TASK_ASSIGNED",
+        message: `You have been assigned task "${task.title}" in project "${project.name}"`,
+      });
+
+      await User.findByIdAndUpdate(assignedUserId, {
+        $push: { notifications: notif._id },
+      });
     }
 
     res
